@@ -1,0 +1,1 @@
+ALTER TABLE "job_title_status" ADD COLUMN "color" text DEFAULT 'gray' NOT NULL;

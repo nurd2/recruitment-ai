@@ -1,0 +1,1 @@
+ALTER TABLE "ai_config" DROP COLUMN "api_key_env";

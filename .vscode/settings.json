@@ -1,0 +1,11 @@
+{
+  "chat.tools.terminal.autoApprove": {
+    "bun": true,
+    "docker --version": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "docker compose": true,
+    "bunx": true,
+  }
+}

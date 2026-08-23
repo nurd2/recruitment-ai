@@ -1,0 +1,1 @@
+ALTER TABLE "job_title" ADD COLUMN "work_arrangement" text;

@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: recruitment
+      POSTGRES_PASSWORD: recruitment
+      POSTGRES_DB: recruitment
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recruitment"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  gcs:
+    image: fsouza/fake-gcs-server:latest
+    ports:
+      - "8000:8000"
+    command: ["-scheme", "http", "-port", "8000", "-external-url", "http://localhost:8000"]
+    volumes:
+      - gcsdata:/data
+
+volumes:
+  pgdata:
+  gcsdata:

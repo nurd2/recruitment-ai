@@ -49,7 +49,7 @@ Demo accounts (from the seed):
 See `.env.example` for the full list. Notable variables:
 
 - `DATABASE_URL`, `REDIS_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
-- `GCS_BUCKET`, `GCS_ENDPOINT` (set to `http://localhost:8000` for the local emulator), `GCS_PROJECT_ID`
+- `GCS_BUCKET`, `GCS_ENDPOINT` (set to `http://localhost:8000` for the local emulator), `GCS_PROJECT_ID`, `GCS_CREDENTIALS_JSON` (Railway service-account secret)
 - `APP_ENCRYPTION_KEY` — AES-256-GCM key (from `openssl rand -hex 32`) used to encrypt AI provider API keys at rest. Providers, models, URLs, and keys are configured directly in **Admin → AI Provider** and are never stored or displayed in plaintext.
 - `OCR_RUNTIME` (`node` = tesseract.js, self-contained | `python` = workers/ocr-python with pytesseract). For the Python path: `cd workers/ocr-python && pip install -r requirements.txt` and install the `tesseract` binary (e.g. `brew install tesseract`).
 - `MAX_UPLOAD_SIZE_BYTES` (default 10 MB)
@@ -68,6 +68,19 @@ See `.env.example` for the full list. Notable variables:
 | `bun run lint` / `bun run build` | oxlint / production build |
 | `bun run test` | Vitest unit tests |
 | `bunx playwright test` | E2E smoke tests (needs dev server + seeded DB) |
+
+## Railway production deployment
+
+Railway runs the web server and BullMQ processing worker as separate services
+from the shared `Dockerfile`. The image includes the Python OCR runtime and
+Tesseract language data. PostgreSQL and Redis are Railway-managed services;
+resume files remain in a private Google Cloud Storage bucket because Railway's
+filesystem is ephemeral.
+
+See [docs/railway-deployment.md](./docs/railway-deployment.md) for the service
+setup, environment variables, GCS credentials, migration, admin bootstrap, and
+post-deploy smoke test. Do not set `GCS_ENDPOINT` in production; it is only for
+the local fake GCS emulator.
 
 ## Project structure
 

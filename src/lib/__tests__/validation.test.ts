@@ -27,6 +27,22 @@ describe("AI output schemas (FR-AI-004)", () => {
     }
   });
 
+  it("accepts null optional education fields from providers", () => {
+    const parsed = aiValidationSchema.safeParse({
+      fields: {
+        education: [
+          {
+            institution: "Example University",
+            degree: null,
+            startYear: null,
+            endYear: null,
+          },
+        ],
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
   it("accepts the mock recommendations output and maps job titles", () => {
     const data = mockResult(
       "recommend",

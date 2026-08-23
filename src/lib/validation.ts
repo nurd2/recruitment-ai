@@ -82,10 +82,32 @@ export const aiConfigInputSchema = z
 
 export const educationEntrySchema = z.object({
   institution: z.string().trim().max(300),
-  degree: z.string().trim().max(300).optional(),
-  field: z.string().trim().max(300).optional(),
-  startYear: z.number().int().min(1900).max(2100).optional(),
-  endYear: z.number().int().min(1900).max(2100).optional(),
+  degree: z
+    .string()
+    .trim()
+    .max(300)
+    .nullish()
+    .transform((value) => value ?? undefined),
+  field: z
+    .string()
+    .trim()
+    .max(300)
+    .nullish()
+    .transform((value) => value ?? undefined),
+  startYear: z
+    .number()
+    .int()
+    .min(1900)
+    .max(2100)
+    .nullish()
+    .transform((value) => value ?? undefined),
+  endYear: z
+    .number()
+    .int()
+    .min(1900)
+    .max(2100)
+    .nullish()
+    .transform((value) => value ?? undefined),
 });
 
 export const workExperienceEntrySchema = z.object({

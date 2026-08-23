@@ -7,5 +7,6 @@
     },
     "docker compose": true,
     "bunx": true,
+    "git add": true
   }
 }

@@ -29,17 +29,5 @@ export default async function AdminAiPage() {
     masking: c.masking,
   }));
 
-  return (
-    <div className="grid max-w-3xl gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">AI configuration</h1>
-        <p className="text-sm text-muted-foreground">
-          Admin only. Choose OpenAI, DeepSeek, Gemini, Anthropic, or a custom
-          OpenAI-compatible endpoint. API keys are AES-256-GCM encrypted at
-          rest and never stored or displayed in plaintext.
-        </p>
-      </div>
-      <AiAdmin configs={configs} />
-    </div>
-  );
+  return <AiAdmin configs={configs} />;
 }

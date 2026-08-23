@@ -4,7 +4,7 @@ import { desc, inArray, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { processingJobs, resumeDocuments } from "@/db/schema";
 import { UploadForm } from "@/components/app/upload-form";
-import { DeleteDocumentButton } from "@/components/app/delete-document-button";
+import { UploadActions } from "@/components/app/upload-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, fileSize } from "@/lib/format";
@@ -95,15 +95,13 @@ export default async function UploadPage() {
                     <Badge variant={stateStyle[job?.state ?? "queued"] as "secondary" | "destructive"}>
                       {job?.state ?? "queued"}
                     </Badge>
-                    {job?.state === "ready" || job?.state === "needs_review" ? (
-                      <Link
-                        href={`/review/${d.id}`}
-                        className="text-sm font-medium text-primary hover:underline"
-                      >
-                        Review →
-                      </Link>
+                    {job ? (
+                      <UploadActions
+                        resumeDocumentId={d.id}
+                        processingJobId={job.id}
+                        state={job.state}
+                      />
                     ) : null}
-                    <DeleteDocumentButton resumeDocumentId={d.id} />
                   </div>
                 </div>
               );

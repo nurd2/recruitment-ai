@@ -87,6 +87,38 @@ export async function deleteAiConfigAction(id: string) {
   });
 }
 
+export async function updateAiConfigFlagsAction(input: {
+  id: string;
+  isDefault?: boolean;
+  enabled?: boolean;
+}) {
+  return runAction(async () => {
+    const actor = await requireAdmin();
+
+    if (input.isDefault) {
+      await db
+        .update(aiConfigs)
+        .set({ isDefault: false })
+        .where(eq(aiConfigs.isDefault, true));
+    }
+
+    const changes: Partial<typeof aiConfigs.$inferInsert> = {};
+    if (input.isDefault !== undefined) changes.isDefault = input.isDefault;
+    if (input.enabled !== undefined) changes.enabled = input.enabled;
+    if (Object.keys(changes).length === 0) throw new Error("AI_CONFIG_UPDATE_REQUIRED");
+
+    await db.update(aiConfigs).set(changes).where(eq(aiConfigs.id, input.id));
+    await recordAudit({
+      actorId: actor.id,
+      action: "ai_config.update",
+      entityType: "ai_config",
+      entityId: input.id,
+      after: changes,
+    });
+    return { id: input.id };
+  });
+}
+
 /**
  * Non-blocking "Test connection": validates the submitted credentials by
  * sending a cheap request to the provider. When editing an existing config

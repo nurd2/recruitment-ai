@@ -2,16 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { MoreHorizontal, Pencil, Power, Star, Trash2 } from "lucide-react";
 
 import {
   deleteAiConfigAction,
   testAiConfigAction,
+  updateAiConfigFlagsAction,
   upsertAiConfigAction,
 } from "@/app/actions/ai";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -292,6 +301,7 @@ function ConfigForm({
 export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
   const router = useRouter();
   const [addProviderOpen, setAddProviderOpen] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<AiConfigRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{
     id: string;
     name: string;
@@ -317,46 +327,103 @@ export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
     router.refresh();
   }
 
-  return (
-    <div className="grid gap-6">
-      <div className="grid gap-3">
-        {configs.map((c) => (
-          <div key={c.id} className="grid gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{c.name}</span>
-                <Badge variant="secondary">{providerLabel(c.provider)}</Badge>
-                {!c.hasApiKey ? <Badge variant="outline">no key</Badge> : null}
-                {c.isDefault ? <Badge>default</Badge> : null}
-                {c.fallbackEnabled ? (
-                  <Badge variant="outline">fallback</Badge>
-                ) : null}
-                {!c.enabled ? (
-                  <Badge variant="destructive">disabled</Badge>
-                ) : null}
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setConfirmDelete({ id: c.id, name: c.name })}
-              >
-                Delete
-              </Button>
-            </div>
-            <ConfigForm
-              onSubmit={(input) => onUpsert(input, c.id)}
-              initial={c}
-              submitLabel="Save config"
-            />
-          </div>
-        ))}
-      </div>
+  async function updateFlags(input: {
+    id: string;
+    isDefault?: boolean;
+    enabled?: boolean;
+  }) {
+    const res = await updateAiConfigFlagsAction(input);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success("AI provider updated.");
+    router.refresh();
+  }
 
-      <div>
+  return (
+    <div className="grid max-w-6xl gap-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">AI configuration</h1>
+          <p className="mt-1 max-w-4xl text-sm text-muted-foreground">
+            Admin only. Choose OpenAI, DeepSeek, Gemini, Anthropic, or a custom
+            OpenAI-compatible endpoint. API keys are AES-256-GCM encrypted at
+            rest and never stored or displayed in plaintext.
+          </p>
+        </div>
         <Button type="button" onClick={() => setAddProviderOpen(true)}>
           Add provider
         </Button>
       </div>
+
+      {configs.length === 0 ? (
+        <div className="rounded-3xl border p-8 text-center text-sm text-muted-foreground">
+          No AI providers configured yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {configs.map((c) => (
+            <div key={c.id} className="rounded-3xl border p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="truncate font-medium">{c.name}</h2>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">{providerLabel(c.provider)}</Badge>
+                    {c.isDefault ? <Badge>default</Badge> : null}
+                    {!c.enabled ? (
+                      <Badge variant="destructive">inactive</Badge>
+                    ) : null}
+                  </div>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`${c.name} actions`}
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </Button>
+                    }
+                  />
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => setEditingConfig(c)}>
+                      <Pencil className="size-4" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => updateFlags({ id: c.id, enabled: !c.enabled })}
+                    >
+                      <Power className="size-4" />
+                      {c.enabled ? "Set inactive" : "Set active"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={c.isDefault}
+                      onClick={() => updateFlags({ id: c.id, isDefault: true })}
+                    >
+                      <Star className="size-4" />
+                      {c.isDefault ? "Current default" : "Make default"}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setConfirmDelete({ id: c.id, name: c.name })}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="size-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="mt-6 grid gap-2 text-sm text-muted-foreground">
+                <p className="truncate">{c.model}</p>
+                <p className="truncate">{c.baseUrl ?? "Managed by provider SDK"}</p>
+                <p>{c.hasApiKey ? "API key configured" : "No API key"}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Dialog open={addProviderOpen} onOpenChange={setAddProviderOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-3xl">
@@ -368,6 +435,28 @@ export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
           </DialogHeader>
           <ConfigForm onSubmit={(input) => onUpsert(input)} submitLabel="Add config" />
           <DialogFooter showCloseButton />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editingConfig !== null}
+        onOpenChange={(open) => !open && setEditingConfig(null)}
+      >
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit provider</DialogTitle>
+            <DialogDescription>
+              Update the provider settings and credentials.
+            </DialogDescription>
+          </DialogHeader>
+          {editingConfig ? (
+            <ConfigForm
+              key={editingConfig.id}
+              onSubmit={(input) => onUpsert(input, editingConfig.id)}
+              initial={editingConfig}
+              submitLabel="Save config"
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
 

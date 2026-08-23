@@ -48,12 +48,13 @@ export async function callProvider(
         ],
         response_format: { type: "json_object" },
         temperature: 0.1,
-        // deepseek is a reasoning model → give it the larger budget. Other
-        // OpenAI-compatible chat models keep the model default (avoids 400s
-        // from models with a low max like gpt-4-turbo's 4096).
+        // DeepSeek is a reasoning model, while custom compatible endpoints
+        // need an explicit budget to avoid truncating long resume payloads.
         ...(config.provider === "deepseek"
           ? { max_tokens: REASONING_MAX_TOKENS }
-          : {}),
+          : config.provider === "openai_compatible"
+            ? { max_tokens: MAX_TOKENS }
+            : {})
       });
       const choice = completion.choices[0];
       const content = choice?.message?.content;
@@ -66,6 +67,11 @@ export async function callProvider(
           );
         }
         throw new Error("EMPTY_AI_RESPONSE");
+      }
+      if (choice.finish_reason === "length") {
+        throw new Error(
+          "EMPTY_AI_RESPONSE: output truncated (raise AI_MAX_TOKENS)",
+        );
       }
       return JSON.parse(content);
     }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
-import { applications, candidates, resumeDocuments } from "@/db/schema";
+import { applications, candidates } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -15,15 +15,14 @@ import {
 } from "@/components/ui/table";
 import { DeleteCandidateButton } from "@/components/app/delete-candidate-button";
 import { ageFromDob, formatDate } from "@/lib/format";
-import { RESUME_SOURCE_LABELS, type ResumeSource } from "@/lib/resume-sources";
+import { CANDIDATE_SOURCE_LABELS, type CandidateSource } from "@/lib/resume-sources";
 
 export const dynamic = "force-dynamic";
 
 export default async function CandidatesPage() {
   const cands = await db
-    .select({ candidate: candidates, resumeSource: resumeDocuments.source })
+    .select({ candidate: candidates })
     .from(candidates)
-    .leftJoin(resumeDocuments, eq(candidates.primaryResumeDocumentId, resumeDocuments.id))
     .where(isNull(candidates.deletedAt))
     .orderBy(desc(candidates.createdAt))
     .limit(100);
@@ -65,7 +64,7 @@ export default async function CandidatesPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Age</TableHead>
                 <TableHead>Experience</TableHead>
-                <TableHead>Resume source</TableHead>
+                <TableHead>Candidate source</TableHead>
                 <TableHead>Applications</TableHead>
                 <TableHead>Date added</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -79,7 +78,7 @@ export default async function CandidatesPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                cands.map(({ candidate: c, resumeSource }) => (
+                cands.map(({ candidate: c }) => (
                   <TableRow key={c.id}>
                     <TableCell>
                       <Link href={`/candidates/${c.id}`} className="font-medium hover:underline">
@@ -92,8 +91,8 @@ export default async function CandidatesPage() {
                       {c.totalYearsExperience != null ? `${c.totalYearsExperience} yr` : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {resumeSource
-                        ? (RESUME_SOURCE_LABELS[resumeSource as ResumeSource] ?? resumeSource)
+                      {c.source
+                        ? (CANDIDATE_SOURCE_LABELS[c.source as CandidateSource] ?? c.source)
                         : "—"}
                     </TableCell>
                     <TableCell>{countByCandidate.get(c.id) ?? 0}</TableCell>

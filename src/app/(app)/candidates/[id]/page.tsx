@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ageFromDob, formatDate } from "@/lib/format";
+import { CANDIDATE_SOURCE_LABELS, type CandidateSource } from "@/lib/resume-sources";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,11 @@ export default async function CandidateDetailPage({
               .filter(Boolean)
               .join(" · ") || "No contact info"}
           </p>
+          <p className="text-sm text-muted-foreground">
+            Candidate source: {candidate.source
+              ? (CANDIDATE_SOURCE_LABELS[candidate.source as CandidateSource] ?? candidate.source)
+              : "—"}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -147,6 +153,51 @@ export default async function CandidateDetailPage({
             <p>{candidate.profileSummary || "—"}</p>
           </div>
           <div className="sm:col-span-2">
+            <p className="text-muted-foreground">Work experience</p>
+            {(candidate.workExperience ?? []).length === 0 ? (
+              <span>—</span>
+            ) : (
+              <ul className="mt-1 grid gap-3">
+                {(candidate.workExperience ?? []).map((w, i) => (
+                  <li key={i}>
+                    <p className="font-medium">
+                      {[w.title, w.company].filter(Boolean).join(" @ ") || "—"}
+                    </p>
+                    {w.startDate || w.endDate ? (
+                      <p className="text-xs text-muted-foreground">
+                        {w.startDate || "—"} – {w.endDate || "Present"}
+                      </p>
+                    ) : null}
+                    {w.description ? <p className="mt-0.5">{w.description}</p> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="sm:col-span-2">
+            <p className="text-muted-foreground">Education</p>
+            {(candidate.education ?? []).length === 0 ? (
+              <span>—</span>
+            ) : (
+              <ul className="mt-1 grid gap-3">
+                {(candidate.education ?? []).map((e, i) => (
+                  <li key={i}>
+                    <p className="font-medium">
+                      {[[e.degree, e.field].filter(Boolean).join(" "), e.institution]
+                        .filter(Boolean)
+                        .join(" – ") || "—"}
+                    </p>
+                    {e.startYear || e.endYear ? (
+                      <p className="text-xs text-muted-foreground">
+                        {e.startYear ?? "—"}–{e.endYear ?? "—"}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="sm:col-span-2">
             <p className="text-muted-foreground">Skills</p>
             <div className="flex flex-wrap gap-1.5">
               {(candidate.skills ?? []).length === 0 ? (
@@ -159,6 +210,55 @@ export default async function CandidateDetailPage({
                 ))
               )}
             </div>
+          </div>
+          <div className="sm:col-span-2">
+            <p className="text-muted-foreground">Certifications</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(candidate.certifications ?? []).length === 0 ? (
+                <span>—</span>
+              ) : (
+                (candidate.certifications ?? []).map((c) => (
+                  <Badge key={c} variant="secondary">
+                    {c}
+                  </Badge>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="sm:col-span-2">
+            <p className="text-muted-foreground">Languages</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(candidate.languages ?? []).length === 0 ? (
+                <span>—</span>
+              ) : (
+                (candidate.languages ?? []).map((l) => (
+                  <Badge key={l} variant="secondary">
+                    {l}
+                  </Badge>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="sm:col-span-2">
+            <p className="text-muted-foreground">Links</p>
+            {(candidate.links ?? []).length === 0 ? (
+              <span>—</span>
+            ) : (
+              <ul className="grid gap-0.5">
+                {(candidate.links ?? []).map((l) => (
+                  <li key={l}>
+                    <a
+                      href={l}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {l}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           <div className="sm:col-span-2">
             <p className="text-muted-foreground">Resume</p>

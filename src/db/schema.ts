@@ -140,7 +140,6 @@ export const resumeDocuments = pgTable(
     bucket: text("bucket").notNull(),
     originalName: text("original_name").notNull(),
     mimeType: text("mime_type").notNull(),
-    source: text("source"),
     sizeBytes: integer("size_bytes").notNull(),
     checksum: text("checksum").notNull(), // sha256 hex
     uploaderId: text("uploader_id").references(() => user.id),
@@ -218,6 +217,7 @@ export const candidates = pgTable(
     dateOfBirth: date("date_of_birth"),
     location: text("location"),
     profileSummary: text("profile_summary"),
+    source: text("source"),
     education: jsonb("education").$type<EducationEntry[]>().notNull().default([]),
     workExperience: jsonb("work_experience").$type<WorkExperienceEntry[]>().notNull().default([]),
     skills: jsonb("skills").$type<string[]>().notNull().default([]),

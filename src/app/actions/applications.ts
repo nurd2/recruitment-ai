@@ -15,6 +15,7 @@ import {
 import { requireRole } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { recordAudit } from "@/lib/audit";
+import { findDedupMatches } from "@/lib/dedup";
 import { candidateEditSchema } from "@/lib/validation";
 import { runAiRecommendations } from "@/lib/ai/recommend";
 
@@ -23,17 +24,12 @@ const statusChangeSchema = z.object({
   toStatusId: z.string().uuid(),
 });
 
-export async function changeApplicationStatusAction(
-  input: z.infer<typeof statusChangeSchema>,
-) {
+export async function changeApplicationStatusAction(input: z.infer<typeof statusChangeSchema>) {
   return runAction(async () => {
     const actor = await requireRole("admin", "recruiter");
     const { applicationId, toStatusId } = statusChangeSchema.parse(input);
 
-    const [app] = await db
-      .select()
-      .from(applications)
-      .where(eq(applications.id, applicationId));
+    const [app] = await db.select().from(applications).where(eq(applications.id, applicationId));
     if (!app || app.withdrawn) throw new Error("APPLICATION_NOT_FOUND");
 
     const [status] = await db
@@ -84,17 +80,12 @@ const moveSchema = z.object({
  * already at the target is removed to free the (candidateId, jobTitleId) unique
  * slot; an active one blocks the move.
  */
-export async function moveApplicationAction(
-  input: z.infer<typeof moveSchema>,
-) {
+export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
   return runAction(async () => {
     const actor = await requireRole("admin", "recruiter");
     const { applicationId, toJobTitleId } = moveSchema.parse(input);
 
-    const [app] = await db
-      .select()
-      .from(applications)
-      .where(eq(applications.id, applicationId));
+    const [app] = await db.select().from(applications).where(eq(applications.id, applicationId));
     if (!app || app.withdrawn) throw new Error("APPLICATION_NOT_FOUND");
     if (app.jobTitleId === toJobTitleId) throw new Error("SAME_JOB_TITLE");
 
@@ -107,12 +98,7 @@ export async function moveApplicationAction(
     const [status] = await db
       .select()
       .from(jobTitleStatuses)
-      .where(
-        and(
-          eq(jobTitleStatuses.jobTitleId, toJobTitleId),
-          eq(jobTitleStatuses.active, true),
-        ),
-      )
+      .where(and(eq(jobTitleStatuses.jobTitleId, toJobTitleId), eq(jobTitleStatuses.active, true)))
       .orderBy(asc(jobTitleStatuses.position))
       .limit(1);
     if (!status) throw new Error("NO_ACTIVE_STATUS");
@@ -182,10 +168,7 @@ export async function deleteCandidateAction(candidateId: string) {
   return runAction(async () => {
     const actor = await requireRole("admin", "recruiter");
 
-    const [candidate] = await db
-      .select()
-      .from(candidates)
-      .where(eq(candidates.id, candidateId));
+    const [candidate] = await db.select().from(candidates).where(eq(candidates.id, candidateId));
     if (!candidate || candidate.deletedAt) throw new Error("CANDIDATE_NOT_FOUND");
 
     // Soft delete: candidate + its applications (withdrawn) + primary document.
@@ -219,15 +202,132 @@ const assignSchema = z.object({
   jobTitleId: z.string().uuid(),
 });
 
+const manualCandidateSchema = candidateEditSchema.extend({
+  jobTitleId: z.string().uuid(),
+  dedupCandidateId: z.string().uuid().optional(),
+  forceCreate: z.boolean().optional().default(false),
+});
+
+export async function createManualCandidateAction(input: z.infer<typeof manualCandidateSchema>) {
+  return runAction(async () => {
+    const actor = await requireRole("admin", "recruiter");
+    const parsed = manualCandidateSchema.parse(input);
+    const matches = await findDedupMatches(parsed);
+
+    if (matches.length > 0 && !parsed.dedupCandidateId && !parsed.forceCreate) {
+      return { matches };
+    }
+    if (
+      parsed.dedupCandidateId &&
+      !matches.some((match) => match.candidateId === parsed.dedupCandidateId)
+    ) {
+      throw new Error("INVALID_DEDUP_CANDIDATE");
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const [jobTitle] = await tx
+        .select({ id: jobTitles.id })
+        .from(jobTitles)
+        .where(and(eq(jobTitles.id, parsed.jobTitleId), eq(jobTitles.active, true)));
+      if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
+
+      const [status] = await tx
+        .select()
+        .from(jobTitleStatuses)
+        .where(
+          and(
+            eq(jobTitleStatuses.jobTitleId, parsed.jobTitleId),
+            eq(jobTitleStatuses.active, true),
+          ),
+        )
+        .orderBy(asc(jobTitleStatuses.position))
+        .limit(1);
+      if (!status) throw new Error("NO_ACTIVE_STATUS");
+
+      let candidateId = parsed.dedupCandidateId;
+      if (!candidateId) {
+        const [created] = await tx
+          .insert(candidates)
+          .values({
+            fullName: parsed.fullName || null,
+            email: parsed.email || null,
+            phone: parsed.phone || null,
+            dateOfBirth: parsed.dateOfBirth || null,
+            location: parsed.location || null,
+            profileSummary: parsed.profileSummary || null,
+            source: parsed.source,
+            education: parsed.education,
+            workExperience: parsed.workExperience,
+            skills: parsed.skills,
+            certifications: parsed.certifications,
+            languages: parsed.languages,
+            links: parsed.links,
+            totalYearsExperience: parsed.totalYearsExperience,
+            createdBy: actor.id,
+          })
+          .returning({ id: candidates.id });
+        candidateId = created.id;
+      } else {
+        const [existing] = await tx
+          .select({ id: candidates.id, deletedAt: candidates.deletedAt })
+          .from(candidates)
+          .where(eq(candidates.id, candidateId));
+        if (!existing || existing.deletedAt) throw new Error("CANDIDATE_NOT_FOUND");
+      }
+
+      const [app] = await tx
+        .insert(applications)
+        .values({
+          candidateId,
+          jobTitleId: parsed.jobTitleId,
+          currentStatusId: status.id,
+          createdBy: actor.id,
+        })
+        .onConflictDoUpdate({
+          target: [applications.candidateId, applications.jobTitleId],
+          set: {
+            withdrawn: false,
+            withdrawnAt: null,
+            currentStatusId: status.id,
+            updatedAt: new Date(),
+          },
+        })
+        .returning({ id: applications.id });
+
+      await tx.insert(applicationStatusHistory).values({
+        applicationId: app.id,
+        toStatusId: status.id,
+        changedBy: actor.id,
+      });
+
+      return { candidateId, applicationId: app.id };
+    });
+
+    await recordAudit({
+      actorId: actor.id,
+      action: "candidate.manual_create",
+      entityType: "candidate",
+      entityId: result.candidateId,
+      after: { jobTitleId: parsed.jobTitleId, reused: Boolean(parsed.dedupCandidateId) },
+    });
+    await recordAudit({
+      actorId: actor.id,
+      action: "application.create",
+      entityType: "application",
+      entityId: result.applicationId,
+      after: { candidateId: result.candidateId, jobTitleId: parsed.jobTitleId },
+    });
+    return result;
+  });
+}
+
 /**
  * Assign an already-saved candidate to a job title, creating an application at
  * the job title's first active status. Mirrors the application-creation block
  * of confirmReviewAction; idempotent via the (candidateId, jobTitleId) unique
  * index (a withdrawn app is re-activated rather than duplicated).
  */
-export async function assignCandidateToJobTitleAction(
-  input: z.infer<typeof assignSchema>,
-) {
+export async function assignCandidateToJobTitleAction(input: z.infer<typeof assignSchema>) {
   return runAction(async () => {
     const actor = await requireRole("admin", "recruiter");
     const { candidateId, jobTitleId } = assignSchema.parse(input);
@@ -247,12 +347,7 @@ export async function assignCandidateToJobTitleAction(
     const [status] = await db
       .select()
       .from(jobTitleStatuses)
-      .where(
-        and(
-          eq(jobTitleStatuses.jobTitleId, jobTitleId),
-          eq(jobTitleStatuses.active, true),
-        ),
-      )
+      .where(and(eq(jobTitleStatuses.jobTitleId, jobTitleId), eq(jobTitleStatuses.active, true)))
       .orderBy(asc(jobTitleStatuses.position))
       .limit(1);
     if (!status) throw new Error("NO_ACTIVE_STATUS");
@@ -303,16 +398,10 @@ export async function suggestMatchesForCandidateAction(candidateId: string) {
     await requireRole("admin", "recruiter");
     z.string().uuid().parse(candidateId);
 
-    const [candidate] = await db
-      .select()
-      .from(candidates)
-      .where(eq(candidates.id, candidateId));
+    const [candidate] = await db.select().from(candidates).where(eq(candidates.id, candidateId));
     if (!candidate || candidate.deletedAt) throw new Error("CANDIDATE_NOT_FOUND");
 
-    const active = await db
-      .select()
-      .from(jobTitles)
-      .where(eq(jobTitles.active, true));
+    const active = await db.select().from(jobTitles).where(eq(jobTitles.active, true));
 
     const { recommendations: recs } = await runAiRecommendations({
       fields: {
@@ -366,10 +455,7 @@ export async function editCandidateAction(
     const actor = await requireRole("admin", "recruiter");
     const parsed = candidateEditSchema.parse(fields);
 
-    const [before] = await db
-      .select()
-      .from(candidates)
-      .where(eq(candidates.id, candidateId));
+    const [before] = await db.select().from(candidates).where(eq(candidates.id, candidateId));
     if (!before || before.deletedAt) throw new Error("CANDIDATE_NOT_FOUND");
 
     await db
@@ -381,6 +467,9 @@ export async function editCandidateAction(
         dateOfBirth: parsed.dateOfBirth || null,
         location: parsed.location || null,
         profileSummary: parsed.profileSummary || null,
+        source: parsed.source,
+        education: parsed.education,
+        workExperience: parsed.workExperience,
         skills: parsed.skills,
         certifications: parsed.certifications,
         languages: parsed.languages,

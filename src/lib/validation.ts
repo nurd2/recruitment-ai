@@ -32,21 +32,7 @@ export const statusColorSchema = z.object({
   color: z.enum(STATUS_COLORS),
 });
 
-export const resumeSourceSchema = z.enum(RESUME_SOURCES);
-
-export const candidateEditSchema = z.object({
-  fullName: z.string().trim().max(300).optional().default(""),
-  email: z.string().trim().max(300).optional().default(""),
-  phone: z.string().trim().max(100).optional().default(""),
-  dateOfBirth: z.string().optional().default(""),
-  location: z.string().trim().max(300).optional().default(""),
-  profileSummary: z.string().max(10000).optional().default(""),
-  skills: z.array(z.string().trim().max(200)).default([]),
-  certifications: z.array(z.string().trim().max(200)).default([]),
-  languages: z.array(z.string().trim().max(100)).default([]),
-  links: z.array(z.string().trim().max(500)).default([]),
-  totalYearsExperience: z.coerce.number().min(0).max(100).optional().default(0),
-});
+export const candidateSourceSchema = z.enum(RESUME_SOURCES);
 
 export const aiConfigInputSchema = z
   .object({
@@ -97,6 +83,23 @@ export const workExperienceEntrySchema = z.object({
   startDate: z.string().trim().max(100).optional(),
   endDate: z.string().trim().max(100).optional(),
   description: z.string().trim().max(5000).optional(),
+});
+
+export const candidateEditSchema = z.object({
+  fullName: z.string().trim().max(300).optional().default(""),
+  email: z.string().trim().max(300).optional().default(""),
+  phone: z.string().trim().max(100).optional().default(""),
+  dateOfBirth: z.string().optional().default(""),
+  location: z.string().trim().max(300).optional().default(""),
+  profileSummary: z.string().max(10000).optional().default(""),
+  source: candidateSourceSchema.nullable().optional().default(null),
+  education: z.array(educationEntrySchema).default([]),
+  workExperience: z.array(workExperienceEntrySchema).default([]),
+  skills: z.array(z.string().trim().max(200)).default([]),
+  certifications: z.array(z.string().trim().max(200)).default([]),
+  languages: z.array(z.string().trim().max(100)).default([]),
+  links: z.array(z.string().trim().max(500)).default([]),
+  totalYearsExperience: z.coerce.number().min(0).max(100).optional().default(0),
 });
 
 // Models frequently return `null` for an empty array instead of omitting the

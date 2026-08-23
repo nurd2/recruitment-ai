@@ -8,7 +8,6 @@ import {
   candidates,
   jobTitleStatuses,
   jobTitles,
-  resumeDocuments,
 } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +25,11 @@ import { CandidateActions } from "@/components/app/candidate-actions";
 import { PipelineFilter } from "@/components/app/pipeline-filter";
 import { StatusBadge } from "@/components/app/status-badge";
 import { ageFromDob, formatDate } from "@/lib/format";
-import { RESUME_SOURCE_LABELS, type ResumeSource } from "@/lib/resume-sources";
+import {
+  CANDIDATE_SOURCE_LABELS,
+  RESUME_SOURCES,
+  type CandidateSource,
+} from "@/lib/resume-sources";
 
 export const dynamic = "force-dynamic";
 
@@ -37,12 +40,15 @@ export default async function JobTitleDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; source?: string; page?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
   const statusId = sp.status ?? "";
+  const source = RESUME_SOURCES.includes(sp.source as CandidateSource)
+    ? (sp.source as CandidateSource)
+    : "";
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
 
   const [title] = await db.select().from(jobTitles).where(eq(jobTitles.id, id));
@@ -69,6 +75,7 @@ export default async function JobTitleDetailPage({
     isNull(candidates.deletedAt),
   ];
   if (statusId) filters.push(eq(applications.currentStatusId, statusId));
+  if (source) filters.push(eq(candidates.source, source));
   if (q) {
     const qFilter = or(ilike(candidates.fullName, `%${q}%`), ilike(candidates.email, `%${q}%`));
     if (qFilter) filters.push(qFilter);
@@ -87,13 +94,11 @@ export default async function JobTitleDetailPage({
     .select({
       application: applications,
       candidate: candidates,
-      resumeSource: resumeDocuments.source,
       statusName: jobTitleStatuses.name,
       statusColor: jobTitleStatuses.color,
     })
     .from(applications)
     .innerJoin(candidates, eq(applications.candidateId, candidates.id))
-    .leftJoin(resumeDocuments, eq(candidates.primaryResumeDocumentId, resumeDocuments.id))
     .leftJoin(jobTitleStatuses, eq(applications.currentStatusId, jobTitleStatuses.id))
     .where(where)
     .orderBy(desc(applications.createdAt))
@@ -101,7 +106,7 @@ export default async function JobTitleDetailPage({
     .offset((page - 1) * PAGE_SIZE);
 
   const extra = (p: number) =>
-    `page=${p}${statusId ? `&status=${encodeURIComponent(statusId)}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+    `page=${p}${statusId ? `&status=${encodeURIComponent(statusId)}` : ""}${source ? `&source=${encodeURIComponent(source)}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
 
   return (
     <div className="grid gap-6">
@@ -124,6 +129,13 @@ export default async function JobTitleDetailPage({
         </div>
         <div className="flex gap-2">
           <Button
+            size="sm"
+            nativeButton={false}
+            render={<Link href={`/job-title/${id}/candidates/new`} />}
+          >
+            Add candidate
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             nativeButton={false}
@@ -141,7 +153,7 @@ export default async function JobTitleDetailPage({
       </Card>
 
       <div className="grid gap-3">
-        <PipelineFilter q={q} statusId={statusId} statuses={statuses} />
+        <PipelineFilter q={q} statusId={statusId} source={source} statuses={statuses} />
 
         <Card>
           <CardContent className="p-0">
@@ -151,7 +163,7 @@ export default async function JobTitleDetailPage({
                   <TableHead>Candidate</TableHead>
                   <TableHead>Age</TableHead>
                   <TableHead>Experience</TableHead>
-                  <TableHead>Resume source</TableHead>
+                  <TableHead>Candidate source</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date added</TableHead>
                   <TableHead className="w-12" />
@@ -165,7 +177,7 @@ export default async function JobTitleDetailPage({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map(({ application, candidate, resumeSource, statusName, statusColor }) => (
+                  rows.map(({ application, candidate, statusName, statusColor }) => (
                     <TableRow key={application.id}>
                       <TableCell>
                         <Link
@@ -187,8 +199,8 @@ export default async function JobTitleDetailPage({
                           : "—"}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {resumeSource
-                          ? (RESUME_SOURCE_LABELS[resumeSource as ResumeSource] ?? resumeSource)
+                        {candidate.source
+                          ? (CANDIDATE_SOURCE_LABELS[candidate.source as CandidateSource] ?? candidate.source)
                           : "—"}
                       </TableCell>
                       <TableCell>

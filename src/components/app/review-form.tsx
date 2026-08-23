@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import type { CandidateFields, FieldMeta } from "@/db/schema";
 import type { DedupMatch } from "@/lib/dedup";
 import { ageFromDob } from "@/lib/format";
-import { RESUME_SOURCE_LABELS, RESUME_SOURCES, type ResumeSource } from "@/lib/resume-sources";
+import { CANDIDATE_SOURCE_LABELS, RESUME_SOURCES, type CandidateSource } from "@/lib/resume-sources";
 
 type Recommendation = {
   id: string;
@@ -40,7 +40,7 @@ export function ReviewForm({
   resumeDocumentId,
   resumeOriginalName,
   resumeMimeType,
-  resumeSource,
+  candidateSource,
   jobState,
   ocrUsed,
   fields,
@@ -55,7 +55,7 @@ export function ReviewForm({
   resumeDocumentId: string;
   resumeOriginalName: string;
   resumeMimeType: string;
-  resumeSource: string | null;
+  candidateSource: string | null;
   jobState: string;
   ocrUsed: boolean;
   fields: CandidateFields;
@@ -73,9 +73,9 @@ export function ReviewForm({
   const [phone, setPhone] = useState(fields.phone ?? "");
   const [dateOfBirth, setDateOfBirth] = useState(fields.dateOfBirth ?? "");
   const [location, setLocation] = useState(fields.location ?? "");
-  const [source, setSource] = useState<ResumeSource | "">(
-    resumeSource && RESUME_SOURCES.includes(resumeSource as ResumeSource)
-      ? (resumeSource as ResumeSource)
+  const [source, setSource] = useState<CandidateSource | "">(
+    candidateSource && RESUME_SOURCES.includes(candidateSource as CandidateSource)
+      ? (candidateSource as CandidateSource)
       : "",
   );
   const [profileSummary, setProfileSummary] = useState(fields.profileSummary ?? "");
@@ -302,20 +302,20 @@ export function ReviewForm({
               <FieldMetaNote field="location" />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="source">Resume source</Label>
+              <Label htmlFor="source">Candidate source</Label>
               <Select
                 value={source}
-                onValueChange={(value) => setSource((value ?? "") as ResumeSource | "")}
+                onValueChange={(value) => setSource((value ?? "") as CandidateSource | "")}
               >
                 <SelectTrigger id="source" className="w-full">
                   <SelectValue placeholder="Select source">
-                    {source ? RESUME_SOURCE_LABELS[source] : undefined}
+                    {source ? CANDIDATE_SOURCE_LABELS[source] : undefined}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {RESUME_SOURCES.map((value) => (
-                    <SelectItem key={value} value={value} label={RESUME_SOURCE_LABELS[value]}>
-                      {RESUME_SOURCE_LABELS[value]}
+                    <SelectItem key={value} value={value} label={CANDIDATE_SOURCE_LABELS[value]}>
+                      {CANDIDATE_SOURCE_LABELS[value]}
                     </SelectItem>
                   ))}
                 </SelectContent>

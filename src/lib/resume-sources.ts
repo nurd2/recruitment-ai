@@ -11,9 +11,9 @@ export const RESUME_SOURCES = [
   "other",
 ] as const;
 
-export type ResumeSource = (typeof RESUME_SOURCES)[number];
+export type CandidateSource = (typeof RESUME_SOURCES)[number];
 
-export const RESUME_SOURCE_LABELS: Record<ResumeSource, string> = {
+export const CANDIDATE_SOURCE_LABELS: Record<CandidateSource, string> = {
   linkedin: "LinkedIn",
   jobstreet: "JobStreet",
   kalibrr: "Kalibrr",

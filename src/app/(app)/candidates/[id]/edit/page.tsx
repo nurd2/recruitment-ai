@@ -7,11 +7,7 @@ import { CandidateEditForm } from "@/components/app/candidate-edit-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditCandidatePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditCandidatePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [candidate] = await db
     .select()
@@ -33,6 +29,9 @@ export default async function EditCandidatePage({
           dateOfBirth: candidate.dateOfBirth ?? "",
           location: candidate.location ?? "",
           profileSummary: candidate.profileSummary ?? "",
+          source: candidate.source,
+          education: candidate.education ?? [],
+          workExperience: candidate.workExperience ?? [],
           skills: candidate.skills ?? [],
           certifications: candidate.certifications ?? [],
           languages: candidate.languages ?? [],

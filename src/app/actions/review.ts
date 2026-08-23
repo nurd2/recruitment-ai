@@ -13,12 +13,11 @@ import {
   processingJobs,
   processingResults,
   recommendations,
-  resumeDocuments,
 } from "@/db/schema";
 import { requireRole } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { recordAudit } from "@/lib/audit";
-import { candidateFieldsSchema, resumeSourceSchema } from "@/lib/validation";
+import { candidateFieldsSchema, candidateSourceSchema } from "@/lib/validation";
 import { runAiRecommendations } from "@/lib/ai/recommend";
 
 const confirmReviewSchema = z.object({
@@ -26,7 +25,7 @@ const confirmReviewSchema = z.object({
   fields: candidateFieldsSchema,
   jobTitleId: z.string().uuid().nullable().optional(),
   dedupCandidateId: z.string().uuid().nullable().optional(),
-  source: resumeSourceSchema.nullable().optional(),
+  source: candidateSourceSchema.nullable().optional(),
 });
 
 const rematchSchema = z.object({
@@ -143,11 +142,6 @@ export async function confirmReviewAction(input: z.infer<typeof confirmReviewSch
       .where(eq(processingResults.resumeDocumentId, resumeDocumentId));
     if (!result) throw new Error("PROCESSING_RESULT_NOT_FOUND");
 
-    await db
-      .update(resumeDocuments)
-      .set({ source: parsed.source ?? null })
-      .where(eq(resumeDocuments.id, resumeDocumentId));
-
     if (parsed.jobTitleId) {
       const [jobTitle] = await db
         .select({ id: jobTitles.id })
@@ -179,6 +173,7 @@ export async function confirmReviewAction(input: z.infer<typeof confirmReviewSch
           dateOfBirth: fields.dateOfBirth ?? null,
           location: fields.location ?? null,
           profileSummary: fields.profileSummary ?? null,
+          source: parsed.source ?? null,
           education: fields.education ?? [],
           workExperience: fields.workExperience ?? [],
           skills: fields.skills ?? [],

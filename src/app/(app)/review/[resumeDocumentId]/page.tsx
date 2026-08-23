@@ -143,7 +143,7 @@ export default async function ReviewPage({
       resumeDocumentId={resumeDocumentId}
       resumeOriginalName={doc.originalName}
       resumeMimeType={doc.mimeType}
-      resumeSource={doc.source}
+      candidateSource={null}
       jobState={job.state}
       ocrUsed={result.ocrUsed}
       fields={result.fields}

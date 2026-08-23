@@ -57,6 +57,13 @@
       "when": 1787436768439,
       "tag": "0007_huge_captain_universe",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787500000000,
+      "tag": "0008_move_source_to_candidate",
+      "breakpoints": true
     }
   ]
 }

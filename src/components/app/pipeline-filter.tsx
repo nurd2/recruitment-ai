@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { statusDotClass } from "@/lib/status-colors";
+import { CANDIDATE_SOURCE_LABELS, RESUME_SOURCES, type CandidateSource } from "@/lib/resume-sources";
 import { cn } from "@/lib/utils";
 
 const ALL = "__all__";
@@ -24,26 +25,30 @@ export function PipelineFilter({
   q,
   statusId,
   statuses,
+  source,
 }: {
   q: string;
   statusId: string;
   statuses: { id: string; name: string; color: string | null }[];
+  source: CandidateSource | "";
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const [query, setQuery] = useState(q);
   const [status, setStatus] = useState(statusId || ALL);
+  const [candidateSource, setCandidateSource] = useState(source || ALL);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
       if (status !== ALL) params.set("status", status);
+      if (candidateSource !== ALL) params.set("source", candidateSource);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }, 350);
 
     return () => window.clearTimeout(timeout);
-  }, [pathname, query, router, status]);
+  }, [candidateSource, pathname, query, router, status]);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -82,6 +87,26 @@ export function PipelineFilter({
                 <span className={cn("size-2 shrink-0 rounded-full", statusDotClass(s.color))} />
                 {s.name}
               </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={candidateSource} onValueChange={(v) => setCandidateSource(v ?? ALL)}>
+        <SelectTrigger aria-label="Filter by candidate source">
+          <SelectValue>
+            {(value) =>
+              value && value !== ALL
+                ? CANDIDATE_SOURCE_LABELS[value as CandidateSource] ?? value
+                : "All sources"}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL} label="All sources">
+            All sources
+          </SelectItem>
+          {RESUME_SOURCES.map((value) => (
+            <SelectItem key={value} value={value} label={CANDIDATE_SOURCE_LABELS[value]}>
+              {CANDIDATE_SOURCE_LABELS[value]}
             </SelectItem>
           ))}
         </SelectContent>

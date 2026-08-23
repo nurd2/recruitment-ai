@@ -5,7 +5,7 @@ The recruitment context is where hiring needs (Job Titles), candidate resumes, A
 ## Language
 
 **Candidate**:
-A person profile built from one or more Resume Documents. A Candidate exists only after a recruiter reviews and confirms a Processing Result (draft).
+A person profile built from one or more Resume Documents, or entered directly by a recruiter through manual intake. A resume-based Candidate exists only after a recruiter reviews and confirms a Processing Result (draft); a manual Candidate has no Resume Document unless one is added later.
 _Avoid_: Applicant, prospect, contact
 
 **Application**:
@@ -23,8 +23,8 @@ A named stage in a Job Title's pipeline (for example, Screening) that belongs to
 The original uploaded file (PDF or DOCX), stored privately, that produces a Processing Result.
 _Avoid_: CV file
 
-**Resume Source**:
-The known channel or origin through which a Resume Document was obtained, such as a job portal, referral, agency, or direct upload. It belongs to the document's intake provenance and may be unknown.
+**Candidate Source**:
+The known channel or origin through which a Candidate was obtained, such as a job portal, referral, agency, manual entry, or direct upload. It belongs to the Candidate's intake provenance and may be unknown. A Resume Document retains only file-level provenance.
 
 **Processing Result**:
 The structured draft extracted from a Resume Document: normalized fields plus per-field provenance, confidence, and evidence. This is the single draft entity a recruiter reviews.
@@ -39,7 +39,7 @@ An AI decision-support suggestion linking a Candidate to a Job Title. A recommen
 _Avoid_: Match, suggestion
 
 **Confirm**:
-The recruiter's explicit action that turns a Processing Result into a Candidate (and, when a Job Title is chosen, an Application).
+The recruiter's explicit action that turns a Processing Result into a Candidate (and, when a Job Title is chosen, an Application). Manual intake creates a Candidate directly and attaches it to the selected Job Title in the same explicit action.
 _Avoid_: Accept, approve
 
 **Withdraw**:

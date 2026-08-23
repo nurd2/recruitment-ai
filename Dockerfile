@@ -10,6 +10,9 @@ RUN apt-get update \
 
 ENV PATH="/opt/ocr-venv/bin:${PATH}"
 ENV NODE_ENV=production
+# OCR spawns Python; default is .venv/bin/python (local dev). In the image the
+# venv lives at /opt/ocr-venv, so point the worker/web at it.
+ENV OCR_PYTHON_CMD=/opt/ocr-venv/bin/python
 
 COPY workers/ocr-python/requirements.txt /tmp/ocr-requirements.txt
 RUN pip install --no-cache-dir -r /tmp/ocr-requirements.txt \

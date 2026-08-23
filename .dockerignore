@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.env*
+coverage
+*.log
+Dockerfile*
+docker-compose.yml
+workers/ocr-python/__pycache__

@@ -10,6 +10,19 @@ function getStorage(): Storage {
   if (endpoint) {
     return new Storage({ projectId, apiEndpoint: endpoint });
   }
+  const credentialsJson = process.env.GCS_CREDENTIALS_JSON;
+  if (credentialsJson) {
+    let credentials: { client_email: string; private_key: string };
+    try {
+      credentials = JSON.parse(credentialsJson) as typeof credentials;
+    } catch {
+      throw new Error("GCS_CREDENTIALS_JSON is not valid JSON");
+    }
+    if (!credentials.client_email || !credentials.private_key) {
+      throw new Error("GCS_CREDENTIALS_JSON is missing client_email or private_key");
+    }
+    return new Storage({ projectId, credentials });
+  }
   return new Storage({ projectId });
 }
 

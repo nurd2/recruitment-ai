@@ -28,8 +28,19 @@ const DEFAULT_STATUSES = [
  *   bun run db:seed
  */
 async function seed() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@recruitment.local";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123!";
+  const productionSeed =
+    process.env.NODE_ENV === "production" || process.env.SEED_MODE === "production";
+  const adminEmail = productionSeed
+    ? process.env.SEED_ADMIN_EMAIL
+    : (process.env.SEED_ADMIN_EMAIL ?? "admin@recruitment.local");
+  const adminPassword = productionSeed
+    ? process.env.SEED_ADMIN_PASSWORD
+    : (process.env.SEED_ADMIN_PASSWORD ?? "admin123!");
+  if (!adminEmail || !adminPassword || adminPassword.length < 8) {
+    throw new Error(
+      "Production seed requires SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD (minimum 8 characters)",
+    );
+  }
   const recruiterEmail =
     process.env.SEED_RECRUITER_EMAIL ?? "recruiter@recruitment.local";
   const recruiterPassword = process.env.SEED_RECRUITER_PASSWORD ?? "recruiter123!";
@@ -61,7 +72,12 @@ async function seed() {
       userId: adminId,
       password: passwordHash,
     });
-    console.log(`[seed] created admin ${adminEmail} (password: ${adminPassword})`);
+    console.log(`[seed] created admin ${adminEmail}`);
+  }
+
+  if (productionSeed) {
+    console.log("[seed] production bootstrap complete (admin only)");
+    return;
   }
 
   let recruiterId: string | null = null;
@@ -90,9 +106,7 @@ async function seed() {
       userId: recruiterId,
       password: passwordHash,
     });
-    console.log(
-      `[seed] created recruiter ${recruiterEmail} (password: ${recruiterPassword})`,
-    );
+    console.log(`[seed] created recruiter ${recruiterEmail}`);
   }
 
   // --- Demo job title + default statuses ---

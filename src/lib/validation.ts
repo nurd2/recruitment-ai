@@ -80,9 +80,9 @@ export const educationEntrySchema = z.object({
 export const workExperienceEntrySchema = z.object({
   company: z.string().trim().max(300),
   title: z.string().trim().max(300),
-  startDate: z.string().trim().max(100).optional(),
-  endDate: z.string().trim().max(100).optional(),
-  description: z.string().trim().max(5000).optional(),
+  startDate: optionalNullable(z.string().trim().max(100)),
+  endDate: optionalNullable(z.string().trim().max(100)),
+  description: optionalNullable(z.string().trim().max(5000)),
 });
 
 export const candidateEditSchema = z.object({

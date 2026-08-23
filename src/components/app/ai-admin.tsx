@@ -44,6 +44,7 @@ import {
   PRESET_BASE_URLS,
 } from "@/lib/ai/providers-meta";
 import type { AiProviderName } from "@/lib/ai/providers-meta";
+import { delayDialogClose } from "@/lib/utils";
 import { toast } from "sonner";
 
 export type AiConfigRow = {
@@ -311,7 +312,9 @@ export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
     const res = await upsertAiConfigAction({ ...input, id } as never);
     if (!res.ok) throw new Error(res.error);
     toast.success("AI provider saved.");
-    if (!id) setAddProviderOpen(false);
+    await delayDialogClose();
+    setAddProviderOpen(false);
+    setEditingConfig(null);
     router.refresh();
   }
 

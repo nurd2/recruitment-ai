@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { EDUCATION_LEVELS, normalizeEducationLevel } from "@/lib/education";
+import { delayDialogClose } from "@/lib/utils";
 import { WORK_ARRANGEMENTS } from "@/lib/work-arrangement";
 import { toast } from "sonner";
 
@@ -106,6 +107,7 @@ export function JobTitleForm({
     setWorkType(result.workType);
     setWorkArrangement(result.workArrangement);
     setLanguage(result.language);
+    await delayDialogClose();
     setPromptOpen(false);
     setAutofillLoading(false);
     toast.success("Job criteria filled by AI. Review before saving.");

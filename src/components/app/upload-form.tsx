@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { uploadResumeAction } from "@/app/actions/documents";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
@@ -26,16 +25,27 @@ export function UploadForm({
     form.append("file", file);
     if (jobTitleId) form.append("jobTitleId", jobTitleId);
 
-    const res = await uploadResumeAction(form);
-    if (!res.ok) {
-      toast.error(res.error);
+    try {
+      const response = await fetch("/api/resumes", {
+        method: "POST",
+        body: form,
+      });
+      const res = (await response.json()) as
+        | { resumeDocumentId: string }
+        | { error: string };
+      if (!response.ok || !("resumeDocumentId" in res)) {
+        toast.error("error" in res ? res.error : "Upload failed.");
+        return;
+      }
+      toast.success("Resume uploaded — processing queued.");
+      router.push(`/review/${res.resumeDocumentId}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
-      return;
     }
-    toast.success("Resume uploaded — processing queued.");
-    router.push(`/review/${res.data!.resumeDocumentId}`);
-    router.refresh();
   }
 
   return (

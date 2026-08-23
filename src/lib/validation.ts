@@ -80,34 +80,15 @@ export const aiConfigInputSchema = z
 /* Shared candidate JSON shapes (mirrored in schema.ts types)          */
 /* ------------------------------------------------------------------ */
 
+const optionalNullable = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => value ?? undefined, schema.optional());
+
 export const educationEntrySchema = z.object({
   institution: z.string().trim().max(300),
-  degree: z
-    .string()
-    .trim()
-    .max(300)
-    .nullish()
-    .transform((value) => value ?? undefined),
-  field: z
-    .string()
-    .trim()
-    .max(300)
-    .nullish()
-    .transform((value) => value ?? undefined),
-  startYear: z
-    .number()
-    .int()
-    .min(1900)
-    .max(2100)
-    .nullish()
-    .transform((value) => value ?? undefined),
-  endYear: z
-    .number()
-    .int()
-    .min(1900)
-    .max(2100)
-    .nullish()
-    .transform((value) => value ?? undefined),
+  degree: optionalNullable(z.string().trim().max(300)),
+  field: optionalNullable(z.string().trim().max(300)),
+  startYear: optionalNullable(z.number().int().min(1900).max(2100)),
+  endYear: optionalNullable(z.number().int().min(1900).max(2100)),
 });
 
 export const workExperienceEntrySchema = z.object({

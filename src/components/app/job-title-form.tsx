@@ -244,7 +244,7 @@ export function JobTitleForm({
             name="location"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="Jakarta (hybrid)"
+            placeholder="Jakarta"
           />
         </div>
         <div className="grid gap-2">

@@ -2,9 +2,17 @@ import Link from "next/link";
 import { count, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
-import { applications, candidates, jobTitles, processingJobs } from "@/db/schema";
+import {
+  applications,
+  candidates,
+  jobTitleStatuses,
+  jobTitles,
+  processingJobs,
+} from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCharts } from "@/components/app/dashboard-charts";
+import { CANDIDATE_SOURCE_LABELS, type CandidateSource } from "@/lib/resume-sources";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +33,33 @@ export default async function DashboardPage() {
     .select({ n: count() })
     .from(processingJobs)
     .where(inArray(processingJobs.state, ["ready", "needs_review"]));
+  const sourceCounts = await db
+    .select({ source: candidates.source, n: count() })
+    .from(candidates)
+    .where(isNull(candidates.deletedAt))
+    .groupBy(candidates.source);
+  const pipelineCounts = await db
+    .select({
+      statusId: jobTitleStatuses.id,
+      statusName: jobTitleStatuses.name,
+      statusColor: jobTitleStatuses.color,
+      n: count(),
+    })
+    .from(applications)
+    .leftJoin(jobTitleStatuses, eq(applications.currentStatusId, jobTitleStatuses.id))
+    .where(eq(applications.withdrawn, false))
+    .groupBy(jobTitleStatuses.id, jobTitleStatuses.name, jobTitleStatuses.color);
+
+  const sortedSourceCounts = [...sourceCounts].sort((a, b) => Number(b.n) - Number(a.n));
+  const sortedPipelineCounts = [...pipelineCounts].sort((a, b) => Number(b.n) - Number(a.n));
+  const sourceData = sortedSourceCounts.map(({ source, n }) => ({
+    label: source ? (CANDIDATE_SOURCE_LABELS[source as CandidateSource] ?? source) : "Not specified",
+    value: Number(n),
+  }));
+  const pipelineData = sortedPipelineCounts.map(({ statusName, n }) => ({
+    label: statusName ?? "Unassigned",
+    value: Number(n),
+  }));
 
   const stats = [
     { label: "Active job titles", value: titles.n, href: "/job-titles" },
@@ -69,6 +104,7 @@ export default async function DashboardPage() {
           </Card>
         ))}
       </div>
+      <DashboardCharts sourceData={sourceData} pipelineData={pipelineData} />
     </div>
   );
 }

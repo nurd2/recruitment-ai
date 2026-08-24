@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@bprogress/next/app";
 
 import { editCandidateAction } from "@/app/actions/applications";
 import { CandidateProfileFields } from "@/components/app/candidate-profile-fields";

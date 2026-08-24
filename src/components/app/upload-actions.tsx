@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@bprogress/next/app";
 import { MoreHorizontal, RefreshCw, SquareChartGantt, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";

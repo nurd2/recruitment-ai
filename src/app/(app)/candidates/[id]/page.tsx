@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { ArrowLeft } from "lucide-react";
 
 import { db } from "@/db";
 import {
@@ -28,10 +29,13 @@ const toStatuses = alias(jobTitleStatuses, "to_status");
 
 export default async function CandidateDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ fromJobTitle?: string }>;
 }) {
   const { id } = await params;
+  const { fromJobTitle } = await searchParams;
   const [candidate] = await db
     .select()
     .from(candidates)
@@ -63,6 +67,10 @@ export default async function CandidateDetailPage({
     .where(and(eq(applications.candidateId, id), eq(applications.withdrawn, false)))
     .orderBy(desc(applications.createdAt));
 
+  const returnJobTitleId = appRows.some((row) => row.application.jobTitleId === fromJobTitle)
+    ? fromJobTitle
+    : null;
+
   const histories = appRows.length
     ? await db
         .select({
@@ -71,10 +79,7 @@ export default async function CandidateDetailPage({
           toName: toStatuses.name,
         })
         .from(applicationStatusHistory)
-        .leftJoin(
-          fromStatuses,
-          eq(applicationStatusHistory.fromStatusId, fromStatuses.id),
-        )
+        .leftJoin(fromStatuses, eq(applicationStatusHistory.fromStatusId, fromStatuses.id))
         .leftJoin(toStatuses, eq(applicationStatusHistory.toStatusId, toStatuses.id))
         .where(
           inArray(
@@ -104,16 +109,27 @@ export default async function CandidateDetailPage({
     <div className="grid max-w-3xl gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
+          {returnJobTitleId ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/job-title/${returnJobTitleId}`} />}
+              className="-ml-3 mb-2"
+            >
+              <ArrowLeft className="size-4" /> Back
+            </Button>
+          ) : null}
           <h1 className="text-2xl font-semibold tracking-tight">
             {candidate.fullName || "Unnamed candidate"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {[candidate.email, candidate.phone, candidate.location]
-              .filter(Boolean)
-              .join(" · ") || "No contact info"}
+            {[candidate.email, candidate.phone, candidate.location].filter(Boolean).join(" · ") ||
+              "No contact info"}
           </p>
           <p className="text-sm text-muted-foreground">
-            Candidate source: {candidate.source
+            Candidate source:{" "}
+            {candidate.source
               ? (CANDIDATE_SOURCE_LABELS[candidate.source as CandidateSource] ?? candidate.source)
               : "—"}
           </p>
@@ -286,13 +302,10 @@ export default async function CandidateDetailPage({
           {appRows.length === 0 ? (
             <div className="grid gap-4">
               <p className="text-sm text-muted-foreground">
-                No applications. This candidate is in the unassigned pool. Assign
-                a job title, or suggest matches from the profile.
+                No applications. This candidate is in the unassigned pool. Assign a job title, or
+                suggest matches from the profile.
               </p>
-              <CandidateAssign
-                candidateId={candidate.id}
-                availableJobTitles={availableJobTitles}
-              />
+              <CandidateAssign candidateId={candidate.id} availableJobTitles={availableJobTitles} />
             </div>
           ) : (
             appRows.map(({ application, title, statusName, statusColor }) => (
@@ -313,8 +326,7 @@ export default async function CandidateDetailPage({
                   <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
                     {(historyByApp.get(application.id) ?? []).map((h) => (
                       <li key={h.history.id}>
-                        {h.fromName ?? "—"} → {h.toName ?? "—"} ·{" "}
-                        {formatDate(h.history.changedAt)}
+                        {h.fromName ?? "—"} → {h.toName ?? "—"} · {formatDate(h.history.changedAt)}
                       </li>
                     ))}
                   </ul>

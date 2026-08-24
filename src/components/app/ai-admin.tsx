@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@bprogress/next/app";
 import { MoreHorizontal, Pencil, Power, Star, Trash2 } from "lucide-react";
 
 import {

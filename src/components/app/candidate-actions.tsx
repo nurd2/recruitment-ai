@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@bprogress/next/app";
 import { ArrowRightLeft, FileDown, MoreHorizontal, Pencil, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   applicationId: string;
   candidateId: string;
+  jobTitleId: string;
   resumeDocumentId: string | null;
   currentStatusId: string | null;
   statuses: { id: string; name: string; color: string | null }[];
@@ -49,6 +50,7 @@ type ConfirmState = {
 export function CandidateActions({
   applicationId,
   candidateId,
+  jobTitleId,
   resumeDocumentId,
   currentStatusId,
   statuses,
@@ -108,9 +110,7 @@ export function CandidateActions({
                   disabled={s.id === currentStatusId}
                   onClick={() => changeStatus(s.id)}
                 >
-                  <span
-                    className={cn("size-2 shrink-0 rounded-full", statusDotClass(s.color))}
-                  />
+                  <span className={cn("size-2 shrink-0 rounded-full", statusDotClass(s.color))} />
                   {s.name}
                   {s.id === currentStatusId ? " (current)" : ""}
                 </DropdownMenuItem>
@@ -131,7 +131,9 @@ export function CandidateActions({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           ) : null}
-          <DropdownMenuItem render={<Link href={`/candidates/${candidateId}`} />}>
+          <DropdownMenuItem
+            render={<Link href={`/candidates/${candidateId}?fromJobTitle=${jobTitleId}`} />}
+          >
             <UserRound className="size-4" /> Open candidate
           </DropdownMenuItem>
           <DropdownMenuItem render={<Link href={`/candidates/${candidateId}/edit`} />}>
@@ -140,7 +142,11 @@ export function CandidateActions({
           {resumeDocumentId ? (
             <DropdownMenuItem
               render={
-                <a href={`/api/resumes/${resumeDocumentId}/download`} target="_blank" rel="noreferrer" />
+                <a
+                  href={`/api/resumes/${resumeDocumentId}/download`}
+                  target="_blank"
+                  rel="noreferrer"
+                />
               }
             >
               <FileDown className="size-4" /> Open resume

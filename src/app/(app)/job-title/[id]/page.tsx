@@ -3,12 +3,7 @@ import { notFound } from "next/navigation";
 import { and, asc, count, desc, eq, ilike, isNull, or } from "drizzle-orm";
 
 import { db } from "@/db";
-import {
-  applications,
-  candidates,
-  jobTitleStatuses,
-  jobTitles,
-} from "@/db/schema";
+import { applications, candidates, jobTitleStatuses, jobTitles } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -178,7 +173,7 @@ export default async function JobTitleDetailPage({
                     <TableRow key={application.id}>
                       <TableCell>
                         <Link
-                          href={`/candidates/${candidate.id}`}
+                          href={`/candidates/${candidate.id}?fromJobTitle=${id}`}
                           className="font-medium hover:underline"
                         >
                           {candidate.fullName || "Unnamed candidate"}
@@ -197,7 +192,8 @@ export default async function JobTitleDetailPage({
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {candidate.source
-                          ? (CANDIDATE_SOURCE_LABELS[candidate.source as CandidateSource] ?? candidate.source)
+                          ? (CANDIDATE_SOURCE_LABELS[candidate.source as CandidateSource] ??
+                            candidate.source)
                           : "—"}
                       </TableCell>
                       <TableCell>
@@ -208,6 +204,7 @@ export default async function JobTitleDetailPage({
                         <CandidateActions
                           applicationId={application.id}
                           candidateId={candidate.id}
+                          jobTitleId={id}
                           resumeDocumentId={candidate.primaryResumeDocumentId}
                           currentStatusId={application.currentStatusId}
                           statuses={statuses}

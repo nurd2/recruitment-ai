@@ -23,6 +23,7 @@
     "@anthropic-ai/sdk": "^0.120.0",
     "@base-ui/react": "^1.7.0",
     "@better-auth/drizzle-adapter": "^1.7.1",
+    "@bprogress/next": "^3.2.12",
     "@google-cloud/storage": "^8.0.1",
     "@google/generative-ai": "^0.24.1",
     "@napi-rs/canvas": "^1.0.7",

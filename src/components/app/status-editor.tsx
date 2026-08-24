@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@bprogress/next/app";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 
 import {

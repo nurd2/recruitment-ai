@@ -19,6 +19,7 @@ import { UploadForm } from "@/components/app/upload-form";
 import { CandidateActions } from "@/components/app/candidate-actions";
 import { PipelineFilter } from "@/components/app/pipeline-filter";
 import { StatusBadge } from "@/components/app/status-badge";
+import { TablePagination } from "@/components/app/table-pagination";
 import { ageFromDob, formatDate } from "@/lib/format";
 import {
   CANDIDATE_SOURCE_LABELS,
@@ -28,7 +29,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default async function JobTitleDetailPage({
   params,
@@ -84,6 +85,7 @@ export default async function JobTitleDetailPage({
     .where(where);
   const total = totalRow?.n ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
 
   const rows = await db
     .select({
@@ -98,7 +100,7 @@ export default async function JobTitleDetailPage({
     .where(where)
     .orderBy(desc(applications.createdAt))
     .limit(PAGE_SIZE)
-    .offset((page - 1) * PAGE_SIZE);
+    .offset((currentPage - 1) * PAGE_SIZE);
 
   const extra = (p: number) =>
     `page=${p}${statusId ? `&status=${encodeURIComponent(statusId)}` : ""}${source ? `&source=${encodeURIComponent(source)}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
@@ -219,35 +221,13 @@ export default async function JobTitleDetailPage({
           </CardContent>
         </Card>
 
-        {totalPages > 1 ? (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              {total} candidate(s) · page {page} of {totalPages}
-            </span>
-            <div className="flex gap-2">
-              {page > 1 ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  nativeButton={false}
-                  render={<Link href={`/job-title/${id}?${extra(page - 1)}`} />}
-                >
-                  Previous
-                </Button>
-              ) : null}
-              {page < totalPages ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  nativeButton={false}
-                  render={<Link href={`/job-title/${id}?${extra(page + 1)}`} />}
-                >
-                  Next
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+        <TablePagination
+          page={currentPage}
+          totalPages={totalPages}
+          total={Number(total)}
+          previousHref={`/job-title/${id}?${extra(currentPage - 1)}`}
+          nextHref={`/job-title/${id}?${extra(currentPage + 1)}`}
+        />
       </div>
     </div>
   );

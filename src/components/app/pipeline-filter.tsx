@@ -13,7 +13,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { statusDotClass } from "@/lib/status-colors";
-import { CANDIDATE_SOURCE_LABELS, RESUME_SOURCES, type CandidateSource } from "@/lib/resume-sources";
+import {
+  CANDIDATE_SOURCE_LABELS,
+  RESUME_SOURCES,
+  type CandidateSource,
+} from "@/lib/resume-sources";
 import { cn } from "@/lib/utils";
 
 const ALL = "__all__";
@@ -58,10 +62,16 @@ export function PipelineFilter({
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search name or email"
-        className="max-w-xs"
+        className={cn(
+          "max-w-xs",
+          query.trim() ? "border-primary bg-primary/5 ring-1 ring-primary/20" : undefined,
+        )}
       />
       <Select value={status} onValueChange={(v) => setStatus(v ?? ALL)}>
-        <SelectTrigger aria-label="Filter by status">
+        <SelectTrigger
+          aria-label="Filter by status"
+          className={status !== ALL ? "border-primary bg-primary/5 text-primary" : undefined}
+        >
           <SelectValue>
             {(value) => {
               if (!value || value === ALL) return "All statuses";
@@ -93,12 +103,18 @@ export function PipelineFilter({
         </SelectContent>
       </Select>
       <Select value={candidateSource} onValueChange={(v) => setCandidateSource(v ?? ALL)}>
-        <SelectTrigger aria-label="Filter by candidate source">
+        <SelectTrigger
+          aria-label="Filter by candidate source"
+          className={
+            candidateSource !== ALL ? "border-primary bg-primary/5 text-primary" : undefined
+          }
+        >
           <SelectValue>
             {(value) =>
               value && value !== ALL
-                ? CANDIDATE_SOURCE_LABELS[value as CandidateSource] ?? value
-                : "All sources"}
+                ? (CANDIDATE_SOURCE_LABELS[value as CandidateSource] ?? value)
+                : "All sources"
+            }
           </SelectValue>
         </SelectTrigger>
         <SelectContent>

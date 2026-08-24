@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import { applications, candidates } from "@/db/schema";
@@ -14,18 +14,51 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DeleteCandidateButton } from "@/components/app/delete-candidate-button";
+import { CandidatePoolFilter } from "@/components/app/candidate-pool-filter";
+import { TablePagination } from "@/components/app/table-pagination";
 import { ageFromDob, formatDate } from "@/lib/format";
-import { CANDIDATE_SOURCE_LABELS, type CandidateSource } from "@/lib/resume-sources";
+import {
+  CANDIDATE_SOURCE_LABELS,
+  RESUME_SOURCES,
+  type CandidateSource,
+} from "@/lib/resume-sources";
 
 export const dynamic = "force-dynamic";
 
-export default async function CandidatesPage() {
+const PAGE_SIZE = 10;
+
+export default async function CandidatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; source?: string; page?: string }>;
+}) {
+  const sp = await searchParams;
+  const q = sp.q?.trim() ?? "";
+  const source = RESUME_SOURCES.includes(sp.source as CandidateSource)
+    ? (sp.source as CandidateSource)
+    : "";
+  const page = Math.max(1, Number(sp.page ?? 1) || 1);
+
+  const filters = [isNull(candidates.deletedAt)];
+  if (source) filters.push(eq(candidates.source, source));
+  if (q) {
+    const qFilter = or(ilike(candidates.fullName, `%${q}%`), ilike(candidates.email, `%${q}%`));
+    if (qFilter) filters.push(qFilter);
+  }
+  const where = and(...filters);
+
+  const [totalRow] = await db.select({ n: count() }).from(candidates).where(where);
+  const total = totalRow?.n ?? 0;
+  const totalPages = Math.max(1, Math.ceil(Number(total) / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+
   const cands = await db
     .select({ candidate: candidates })
     .from(candidates)
-    .where(isNull(candidates.deletedAt))
+    .where(where)
     .orderBy(desc(candidates.createdAt))
-    .limit(100);
+    .limit(PAGE_SIZE)
+    .offset((currentPage - 1) * PAGE_SIZE);
 
   const appRows = cands.length
     ? await db
@@ -46,6 +79,9 @@ export default async function CandidatesPage() {
     countByCandidate.set(a.candidateId, (countByCandidate.get(a.candidateId) ?? 0) + 1);
   }
 
+  const extra = (nextPage: number) =>
+    `page=${nextPage}${source ? `&source=${encodeURIComponent(source)}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+
   return (
     <div className="grid gap-6">
       <div className="flex items-center justify-between">
@@ -55,6 +91,12 @@ export default async function CandidatesPage() {
             All candidates, including those saved without an application.
           </p>
         </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
+        <CandidatePoolFilter q={q} source={source} />
+        <Button variant="outline" nativeButton={false} render={<Link href="/upload" />}>
+          Upload CV
+        </Button>
       </div>
       <Card>
         <CardContent className="p-0">
@@ -107,11 +149,13 @@ export default async function CandidatesPage() {
           </Table>
         </CardContent>
       </Card>
-      <div>
-        <Button variant="outline" nativeButton={false} render={<Link href="/upload" />}>
-          Upload CV
-        </Button>
-      </div>
+      <TablePagination
+        page={currentPage}
+        totalPages={totalPages}
+        total={Number(total)}
+        previousHref={`/candidates?${extra(currentPage - 1)}`}
+        nextHref={`/candidates?${extra(currentPage + 1)}`}
+      />
     </div>
   );
 }

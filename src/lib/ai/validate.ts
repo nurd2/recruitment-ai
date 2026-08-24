@@ -36,6 +36,9 @@ Rules:
 - fullName: the candidate's name, usually the most prominent line in the header.
 - location: extract the city/region/country even when no street address is given (e.g. "Jakarta, ID" -> "Jakarta, Indonesia"). Do not require a full address.
 - Resumes may be in Indonesian. Handle Indonesian phone formats (+62..., 0812..., with spaces/dashes), Indonesian month names, and dd/mm/yyyy dates. Normalize dateOfBirth to ISO yyyy-mm-dd.
+- education.degree: normalize to ONE canonical token: SD, SMP, SMA, D1, D2, D3, D4, S1, S2, S3 (e.g. "Bachelor of Computer Science" -> degree "S1", field "Computer Science"; "Magister Manajemen" -> "S2"). Keep the study program in "field".
+- When the degree word is NOT stated but the institution implies a level, infer it: "Universitas / Institut / Sekolah Tinggi" (with a study program) -> "S1"; "Politeknik / Akademi" -> "D3". An explicit degree always wins over this fallback (Magister/Master -> S2, Doktor/PhD -> S3). Do NOT infer a level for a plain "SMA/SMK" or when no institution/program is given.
+- For an inferred degree (not literally written), set that education entry's fieldMeta to source "ai" and status "needs_review" so a recruiter verifies it. This inference is standard normalization, not fabrication.
 - Derive totalYearsExperience from the work experience entries only.
 - source is "resume" when the value is directly in the text, "ai" when normalized/inferred.
 - status is one of confirmed, draft, unknown, needs_review.

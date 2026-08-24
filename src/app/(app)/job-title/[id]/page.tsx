@@ -118,9 +118,6 @@ export default async function JobTitleDetailPage({
               {title.minYearsExperience ? `${title.minYearsExperience} yr min` : "no exp req"}
             </Badge>
           </div>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            {title.description || "No description"}
-          </p>
           <p className="mt-1 text-sm text-muted-foreground">
             {[title.location, title.workType, title.workArrangement, title.minEducation]
               .filter(Boolean)

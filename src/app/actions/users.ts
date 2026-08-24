@@ -54,6 +54,12 @@ async function guardLastAdmin(targetId: string): Promise<void> {
   }
 }
 
+function guardSelfModification(actorId: string, targetId: string): void {
+  if (actorId === targetId) {
+    throw new Error("SELF_MODIFICATION: you cannot change your own role or active status.");
+  }
+}
+
 export async function createUserAction(input: z.infer<typeof createUserSchema>) {
   return runAction(async () => {
     await requireAdmin();
@@ -85,6 +91,7 @@ export async function changeRoleAction(input: z.infer<typeof roleSchema>) {
   return runAction(async () => {
     const actor = await requireAdmin();
     const parsed = roleSchema.parse(input);
+    guardSelfModification(actor.id, parsed.userId);
     await guardLastAdmin(parsed.userId);
     await auth.api.setRole({
       body: {
@@ -108,6 +115,7 @@ export async function setUserActiveAction(input: z.infer<typeof activeSchema>) {
   return runAction(async () => {
     const actor = await requireAdmin();
     const parsed = activeSchema.parse(input);
+    guardSelfModification(actor.id, parsed.userId);
     if (!parsed.active) {
       await guardLastAdmin(parsed.userId);
       await auth.api.banUser({

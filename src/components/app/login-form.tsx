@@ -44,6 +44,7 @@ export function LoginForm() {
               type="email"
               autoComplete="email"
               required
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -55,6 +56,7 @@ export function LoginForm() {
               type="password"
               autoComplete="current-password"
               required
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />

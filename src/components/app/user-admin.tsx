@@ -33,13 +33,7 @@ export type UserRow = {
   createdAt: string | Date;
 };
 
-export function UserAdmin({
-  users,
-  currentUserId,
-}: {
-  users: UserRow[];
-  currentUserId: string;
-}) {
+export function UserAdmin({ users, currentUserId }: { users: UserRow[]; currentUserId: string }) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<UserRow | null>(null);
@@ -96,10 +90,7 @@ export function UserAdmin({
 
   return (
     <div className="grid gap-6">
-      <form
-        onSubmit={onCreate}
-        className="grid max-w-xl gap-4 rounded-3xl border p-4"
-      >
+      <form onSubmit={onCreate} className="grid max-w-xl gap-4 rounded-3xl border p-4">
         <h2 className="text-sm font-semibold">Add user</h2>
         <div className="grid gap-2">
           <Label htmlFor="name">Name</Label>
@@ -117,13 +108,15 @@ export function UserAdmin({
           <Label htmlFor="role">Role</Label>
           <Select name="role" defaultValue="recruiter">
             <SelectTrigger id="role" className="w-full">
-              <SelectValue>
-                {(value) => (value === "admin" ? "Admin" : "Recruiter")}
-              </SelectValue>
+              <SelectValue>{(value) => (value === "admin" ? "Admin" : "Recruiter")}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="recruiter" label="Recruiter">Recruiter</SelectItem>
-              <SelectItem value="admin" label="Admin">Admin</SelectItem>
+              <SelectItem value="recruiter" label="Recruiter">
+                Recruiter
+              </SelectItem>
+              <SelectItem value="admin" label="Admin">
+                Admin
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -157,7 +150,7 @@ export function UserAdmin({
               </Badge>
               <Select
                 value={u.role}
-                disabled={u.banned}
+                disabled={u.banned || u.id === currentUserId}
                 onValueChange={(v) => onRole(u.id, v ?? "recruiter")}
               >
                 <SelectTrigger size="sm" aria-label={`Role for ${u.name}`}>
@@ -166,23 +159,24 @@ export function UserAdmin({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="recruiter" label="Recruiter">Recruiter</SelectItem>
-                  <SelectItem value="admin" label="Admin">Admin</SelectItem>
+                  <SelectItem value="recruiter" label="Recruiter">
+                    Recruiter
+                  </SelectItem>
+                  <SelectItem value="admin" label="Admin">
+                    Admin
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <Button
                 variant="outline"
                 size="sm"
+                disabled={u.id === currentUserId}
                 onClick={() => onActive(u.id, u.banned)}
               >
                 {u.banned ? "Activate" : "Deactivate"}
               </Button>
               {u.id !== currentUserId ? (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setDeleting(u)}
-                >
+                <Button variant="destructive" size="sm" onClick={() => setDeleting(u)}>
                   Delete
                 </Button>
               ) : null}

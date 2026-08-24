@@ -19,7 +19,7 @@ import { StatusBadge } from "@/components/app/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ageFromDob, formatDate } from "@/lib/format";
+import { ageFromDob, formatDate, formatWorkExperienceDate } from "@/lib/format";
 import { CANDIDATE_SOURCE_LABELS, type CandidateSource } from "@/lib/resume-sources";
 
 export const dynamic = "force-dynamic";
@@ -181,7 +181,8 @@ export default async function CandidateDetailPage({
                     </p>
                     {w.startDate || w.endDate ? (
                       <p className="text-xs text-muted-foreground">
-                        {w.startDate || "—"} – {w.endDate || "Present"}
+                        {w.startDate ? formatWorkExperienceDate(w.startDate) : "—"} –{" "}
+                        {w.endDate ? formatWorkExperienceDate(w.endDate) : "Present"}
                       </p>
                     ) : null}
                     {w.description ? <p className="mt-0.5">{w.description}</p> : null}

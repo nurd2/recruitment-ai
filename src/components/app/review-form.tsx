@@ -21,8 +21,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import type { CandidateFields, FieldMeta } from "@/db/schema";
 import type { DedupMatch } from "@/lib/dedup";
-import { ageFromDob } from "@/lib/format";
-import { CANDIDATE_SOURCE_LABELS, RESUME_SOURCES, type CandidateSource } from "@/lib/resume-sources";
+import { ageFromDob, formatWorkExperienceDate } from "@/lib/format";
+import {
+  CANDIDATE_SOURCE_LABELS,
+  RESUME_SOURCES,
+  type CandidateSource,
+} from "@/lib/resume-sources";
 
 type Recommendation = {
   id: string;
@@ -385,7 +389,7 @@ export function ReviewForm({
                     <p className="font-medium">{ed.institution}</p>
                     <p className="text-muted-foreground">
                       {[ed.degree, ed.field].filter(Boolean).join(" · ")}
-                      {ed.startYear ? ` · ${ed.startYear}–${ed.endYear ?? "now"}` : ""}
+                      {ed.startYear ? ` · ${ed.startYear} – ${ed.endYear ?? "now"}` : ""}
                     </p>
                   </div>
                 ))
@@ -401,7 +405,9 @@ export function ReviewForm({
                     <p className="font-medium">{w.title}</p>
                     <p className="text-muted-foreground">
                       {w.company}
-                      {w.startDate ? ` · ${w.startDate}–${w.endDate ?? "now"}` : ""}
+                      {w.startDate
+                        ? ` · ${formatWorkExperienceDate(w.startDate)} – ${w.endDate ? formatWorkExperienceDate(w.endDate) : "now"}`
+                        : ""}
                     </p>
                     {w.description ? (
                       <p className="mt-0.5 text-muted-foreground">{w.description}</p>

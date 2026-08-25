@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -48,6 +48,30 @@ export async function changeApplicationStatusAction(input: z.infer<typeof status
       .update(applications)
       .set({ currentStatusId: toStatusId, updatedAt: new Date() })
       .where(eq(applications.id, applicationId));
+
+    if (status.name === "Hired") {
+      const [jobTitle] = await db
+        .select({ openings: jobTitles.openings })
+        .from(jobTitles)
+        .where(eq(jobTitles.id, app.jobTitleId));
+      const [hired] = await db
+        .select({ n: count() })
+        .from(applications)
+        .innerJoin(jobTitleStatuses, eq(applications.currentStatusId, jobTitleStatuses.id))
+        .where(
+          and(
+            eq(applications.jobTitleId, app.jobTitleId),
+            eq(applications.withdrawn, false),
+            eq(jobTitleStatuses.name, "Hired"),
+          ),
+        );
+      if (jobTitle && Number(hired.n) >= jobTitle.openings) {
+      await db
+        .update(jobTitles)
+        .set({ lifecycleStatus: "fulfilled", active: false, updatedAt: new Date() })
+        .where(eq(jobTitles.id, app.jobTitleId));
+      }
+    }
 
     await db.insert(applicationStatusHistory).values({
       applicationId,

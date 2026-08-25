@@ -1,0 +1,1 @@
+ALTER TABLE "job_title" ADD COLUMN "openings" integer DEFAULT 1 NOT NULL;

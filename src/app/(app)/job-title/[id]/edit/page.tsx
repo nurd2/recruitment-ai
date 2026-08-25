@@ -44,6 +44,7 @@ export default async function EditJobTitlePage({
             id={id}
             initial={{
               title: title.title,
+              openings: title.openings,
               description: title.description ?? "",
               competencies: title.competencies ?? [],
               minYearsExperience: title.minYearsExperience,
@@ -52,6 +53,7 @@ export default async function EditJobTitlePage({
               workType: title.workType ?? "",
               workArrangement: title.workArrangement ?? "",
               language: title.language ?? "",
+              lifecycleStatus: title.lifecycleStatus,
             }}
           />
         </CardContent>

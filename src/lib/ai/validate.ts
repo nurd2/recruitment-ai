@@ -48,6 +48,37 @@ Rules:
 
 export type AiValidationOutput = z.infer<typeof validationSchemaType>;
 
+export function normalizeAiFields(data: unknown): unknown {
+  if (!data || typeof data !== "object") return data;
+  const candidate = data as { fields?: unknown };
+  if (!candidate.fields || typeof candidate.fields !== "object") return data;
+
+  const fields = candidate.fields as {
+    workExperience?: unknown;
+    education?: unknown;
+  };
+  const normalizeEntries = (entries: unknown, requiredKeys: string[]) =>
+    Array.isArray(entries)
+      ? entries.map((entry) => {
+          if (!entry || typeof entry !== "object") return entry;
+          const normalized = { ...(entry as Record<string, unknown>) };
+          for (const key of requiredKeys) {
+            if (normalized[key] == null) normalized[key] = "";
+          }
+          return normalized;
+        })
+      : entries;
+
+  return {
+    ...candidate,
+    fields: {
+      ...fields,
+      workExperience: normalizeEntries(fields.workExperience, ["company", "title"]),
+      education: normalizeEntries(fields.education, ["institution"]),
+    },
+  };
+}
+
 export async function runAiValidation(input: {
   rawText: string;
   maskedFields: string[];
@@ -61,7 +92,7 @@ export async function runAiValidation(input: {
     "validate",
   );
 
-  const parsed = aiValidationSchema.safeParse(data);
+  const parsed = aiValidationSchema.safeParse(normalizeAiFields(data));
   if (!parsed.success) {
     const detail = parsed.error.issues
       .slice(0, 3)

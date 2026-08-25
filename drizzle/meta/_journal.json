@@ -64,6 +64,20 @@
       "when": 1787500000000,
       "tag": "0008_move_source_to_candidate",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787639536701,
+      "tag": "0009_light_morph",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787639836710,
+      "tag": "0010_long_viper",
+      "breakpoints": true
     }
   ]
 }

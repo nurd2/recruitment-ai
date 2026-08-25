@@ -26,6 +26,7 @@ import {
   RESUME_SOURCES,
   type CandidateSource,
 } from "@/lib/resume-sources";
+import { JOB_TITLE_LIFECYCLE_LABELS } from "@/lib/job-title-status";
 
 export const dynamic = "force-dynamic";
 
@@ -109,11 +110,17 @@ export default async function JobTitleDetailPage({
     <div className="grid gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="grid gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">{title.title}</h1>
-            <Badge variant="secondary">
-              {title.minYearsExperience ? `${title.minYearsExperience} yr min` : "no exp req"}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">
+                {JOB_TITLE_LIFECYCLE_LABELS[title.lifecycleStatus] ?? title.lifecycleStatus}
+              </Badge>
+              <Badge variant="secondary">Needs: {title.openings}</Badge>
+              <Badge variant="secondary">
+                {title.minYearsExperience ? `${title.minYearsExperience} yr min` : "no exp req"}
+              </Badge>
+            </div>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {[title.location, title.workType, title.workArrangement, title.minEducation]

@@ -34,6 +34,7 @@ export async function createJobTitleAction(input: JobTitleInput) {
       .insert(jobTitles)
       .values({
         title: parsed.title,
+        openings: parsed.openings,
         description: parsed.description || null,
         competencies: parsed.competencies,
         minYearsExperience: parsed.minYearsExperience,
@@ -42,6 +43,8 @@ export async function createJobTitleAction(input: JobTitleInput) {
         workType: parsed.workType || null,
         workArrangement: parsed.workArrangement || null,
         language: parsed.language || null,
+        lifecycleStatus: parsed.lifecycleStatus,
+        active: parsed.lifecycleStatus === "active",
         createdBy: actor.id,
       })
       .returning({ id: jobTitles.id });
@@ -74,6 +77,7 @@ export async function updateJobTitleAction(id: string, input: JobTitleInput) {
       .update(jobTitles)
       .set({
         title: parsed.title,
+        openings: parsed.openings,
         description: parsed.description || null,
         competencies: parsed.competencies,
         minYearsExperience: parsed.minYearsExperience,
@@ -82,6 +86,8 @@ export async function updateJobTitleAction(id: string, input: JobTitleInput) {
         workType: parsed.workType || null,
         workArrangement: parsed.workArrangement || null,
         language: parsed.language || null,
+        lifecycleStatus: parsed.lifecycleStatus,
+        active: parsed.lifecycleStatus === "active",
         updatedAt: new Date(),
       })
       .where(eq(jobTitles.id, id))
@@ -102,7 +108,7 @@ export async function deactivateJobTitleAction(id: string) {
     const actor = await requireRole("admin", "recruiter");
     await db
       .update(jobTitles)
-      .set({ active: false, updatedAt: new Date() })
+      .set({ active: false, lifecycleStatus: "fulfilled", updatedAt: new Date() })
       .where(eq(jobTitles.id, id));
     await recordAudit({
       actorId: actor.id,

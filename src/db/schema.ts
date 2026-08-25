@@ -1,4 +1,5 @@
 import { relations } from "drizzle-orm";
+import type { JobTitleLifecycleStatus } from "@/lib/job-title-status";
 import {
   boolean,
   date,
@@ -95,6 +96,7 @@ export const verification = pgTable("verification", {
 export const jobTitles = pgTable("job_title", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: text("title").notNull(),
+  openings: integer("openings").notNull().default(1),
   description: text("description"),
   competencies: jsonb("competencies").$type<Competency[]>().notNull().default([]),
   minYearsExperience: doublePrecision("min_years_experience").notNull().default(0),
@@ -103,6 +105,7 @@ export const jobTitles = pgTable("job_title", {
   workType: text("work_type"),
   workArrangement: text("work_arrangement"),
   language: text("language"),
+  lifecycleStatus: text("lifecycle_status").$type<JobTitleLifecycleStatus>().notNull().default("active"),
   active: boolean("active").notNull().default(true),
   createdBy: text("created_by").references(() => user.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),

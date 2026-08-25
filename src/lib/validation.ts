@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { STATUS_COLORS } from "@/lib/status-colors";
+import { JOB_TITLE_LIFECYCLE_STATUSES } from "@/lib/job-title-status";
 
 /* ------------------------------------------------------------------ */
 /* Domain input schemas (form + server action validation)              */
@@ -13,6 +14,7 @@ export const competencySchema = z.object({
 
 export const jobTitleInputSchema = z.object({
   title: z.string().trim().min(1).max(200),
+  openings: z.coerce.number().int().min(1).max(1000).default(1),
   description: z.string().max(10000).optional().default(""),
   competencies: z.array(competencySchema).default([]),
   minYearsExperience: z.coerce.number().min(0).max(100).default(0),
@@ -21,6 +23,7 @@ export const jobTitleInputSchema = z.object({
   workType: z.string().max(100).optional().default(""),
   workArrangement: z.string().max(100).optional().default(""),
   language: z.string().max(100).optional().default(""),
+  lifecycleStatus: z.enum(JOB_TITLE_LIFECYCLE_STATUSES).default("active"),
 });
 
 export const statusInputSchema = z.object({

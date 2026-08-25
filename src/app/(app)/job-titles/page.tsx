@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 
 import { db } from "@/db";
 import { jobTitles } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { JOB_TITLE_LIFECYCLE_LABELS } from "@/lib/job-title-status";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,6 @@ export default async function JobTitlesPage() {
   const titles = await db
     .select()
     .from(jobTitles)
-    .where(eq(jobTitles.active, true))
     .orderBy(desc(jobTitles.createdAt));
 
   return (
@@ -28,7 +28,7 @@ export default async function JobTitlesPage() {
       {titles.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
-            No active job titles yet. Create one to start hiring.
+            No job titles yet. Create one to start hiring.
           </CardContent>
         </Card>
       ) : (
@@ -36,13 +36,19 @@ export default async function JobTitlesPage() {
           {titles.map((t) => (
             <Card key={t.id}>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between gap-2">
+                <CardTitle className="grid gap-2">
                   <Link href={`/job-title/${t.id}`} className="hover:underline">
                     {t.title}
                   </Link>
-                  <Badge variant="secondary">
-                    {t.minYearsExperience ? `${t.minYearsExperience} yr` : "—"}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">
+                      {JOB_TITLE_LIFECYCLE_LABELS[t.lifecycleStatus] ?? t.lifecycleStatus}
+                    </Badge>
+                    <Badge variant="secondary">Needs: {t.openings}</Badge>
+                    <Badge variant="secondary">
+                      {t.minYearsExperience ? `${t.minYearsExperience} yr` : "—"}
+                    </Badge>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-2 text-sm text-muted-foreground">

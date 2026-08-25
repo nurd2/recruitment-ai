@@ -31,6 +31,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { EDUCATION_LEVELS, normalizeEducationLevel } from "@/lib/education";
 import { delayDialogClose } from "@/lib/utils";
 import { WORK_ARRANGEMENTS } from "@/lib/work-arrangement";
+import {
+  JOB_TITLE_LIFECYCLE_LABELS,
+  JOB_TITLE_LIFECYCLE_STATUSES,
+  type JobTitleLifecycleStatus,
+} from "@/lib/job-title-status";
 import { toast } from "sonner";
 
 const WORK_TYPES = [
@@ -45,6 +50,7 @@ const WORK_TYPES = [
 
 type Initial = {
   title: string;
+  openings: number;
   description: string;
   competencies: { name: string; required: boolean }[];
   minYearsExperience: number;
@@ -53,6 +59,7 @@ type Initial = {
   workType: string;
   workArrangement: string;
   language: string;
+  lifecycleStatus: JobTitleLifecycleStatus;
 };
 
 export function JobTitleForm({
@@ -69,6 +76,7 @@ export function JobTitleForm({
   const [autofillLoading, setAutofillLoading] = useState(false);
   const [promptOpen, setPromptOpen] = useState(false);
   const [title, setTitle] = useState(initial?.title ?? "");
+  const [openings, setOpenings] = useState(String(initial?.openings ?? 1));
   const [description, setDescription] = useState(initial?.description ?? "");
   const [competencies, setCompetencies] = useState(
     (initial?.competencies ?? []).map((c) => `${c.name}${c.required ? " *" : ""}`).join("\n"),
@@ -83,6 +91,9 @@ export function JobTitleForm({
   const [workType, setWorkType] = useState(initial?.workType ?? "");
   const [workArrangement, setWorkArrangement] = useState(initial?.workArrangement ?? "");
   const [language, setLanguage] = useState(initial?.language ?? "");
+  const [lifecycleStatus, setLifecycleStatus] = useState<JobTitleLifecycleStatus>(
+    initial?.lifecycleStatus ?? "active",
+  );
   const [customPrompt, setCustomPrompt] = useState(
     "Focus on practical requirements and make the criteria suitable for a modern hiring team.",
   );
@@ -127,6 +138,7 @@ export function JobTitleForm({
       }));
     const input = {
       title: String(form.get("title") ?? ""),
+      openings: Number(form.get("openings") ?? 1) || 1,
       description: String(form.get("description") ?? ""),
       competencies: parsedCompetencies,
       minYearsExperience: Number(form.get("minYearsExperience") ?? 0) || 0,
@@ -135,6 +147,7 @@ export function JobTitleForm({
       workType: String(form.get("workType") ?? ""),
       workArrangement: String(form.get("workArrangement") ?? ""),
       language: String(form.get("language") ?? ""),
+      lifecycleStatus: String(form.get("lifecycleStatus") ?? "active") as JobTitleLifecycleStatus,
     };
     const res =
       mode === "create"
@@ -161,6 +174,20 @@ export function JobTitleForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Frontend Engineer"
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="openings">Number of openings *</Label>
+        <Input
+          id="openings"
+          name="openings"
+          type="number"
+          min={1}
+          max={1000}
+          step={1}
+          required
+          value={openings}
+          onChange={(e) => setOpenings(e.target.value)}
         />
       </div>
       <div className="grid gap-2">
@@ -298,6 +325,25 @@ export function JobTitleForm({
             onChange={(e) => setLanguage(e.target.value)}
             placeholder="English, Indonesian"
           />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="lifecycleStatus">Job title status</Label>
+          <Select
+            name="lifecycleStatus"
+            value={lifecycleStatus}
+            onValueChange={(value) => setLifecycleStatus((value ?? "active") as JobTitleLifecycleStatus)}
+          >
+            <SelectTrigger id="lifecycleStatus" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {JOB_TITLE_LIFECYCLE_STATUSES.map((value) => (
+                <SelectItem key={value} value={value} label={JOB_TITLE_LIFECYCLE_LABELS[value]}>
+                  {JOB_TITLE_LIFECYCLE_LABELS[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div className="flex gap-2">

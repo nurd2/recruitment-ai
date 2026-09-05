@@ -97,6 +97,9 @@ export const jobTitles = pgTable("job_title", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: text("title").notNull(),
   openings: integer("openings").notNull().default(1),
+  grade: text("grade").notNull().default("staff"),
+  recruitmentStartDate: date("recruitment_start_date"),
+  slaWorkingDays: integer("sla_working_days").notNull().default(30),
   description: text("description"),
   competencies: jsonb("competencies").$type<Competency[]>().notNull().default([]),
   minYearsExperience: doublePrecision("min_years_experience").notNull().default(0),
@@ -107,7 +110,26 @@ export const jobTitles = pgTable("job_title", {
   language: text("language"),
   lifecycleStatus: text("lifecycle_status").$type<JobTitleLifecycleStatus>().notNull().default("active"),
   active: boolean("active").notNull().default(true),
+  deletedAt: timestamp("deleted_at"),
   createdBy: text("created_by").references(() => user.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const slaPolicies = pgTable("sla_policy", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  grade: text("grade").notNull().unique(),
+  workingDays: integer("working_days").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const holidays = pgTable("holiday", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  date: date("date").notNull().unique(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // national_holiday | collective_leave
+  source: text("source").notNull().default("manual"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

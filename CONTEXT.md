@@ -13,8 +13,23 @@ The relationship between one Candidate and one Job Title, carrying its own curre
 _Avoid_: Application record (as in a job application form)
 
 **Job Title**:
-A hiring need with criteria (description, competencies, minimum experience/education, location, work type) and its own ordered status pipeline.
+ A hiring need with criteria (description, competencies, minimum experience/education, location, work type), a grade, a recruitment start date, and its own ordered status pipeline.
 _Avoid_: Role, position
+
+**Grade**:
+ The organizational hiring level assigned to a Job Title, such as staff or manager. A Grade has an SLA Policy.
+
+**SLA Policy**:
+ The working-day target associated with a Grade. It defines how long a recruitment should take.
+
+**Working Day**:
+ A Monday-Friday calendar day that is not listed as a national holiday or collective leave.
+
+**Recruitment Start Date**:
+ The date from which a Job Title's recruitment SLA begins. Existing Job Titles use their creation date.
+
+**Holiday Calendar**:
+ The shared Indonesian calendar of national holidays and collective leave excluded from Working Day calculations.
 
 **Application Status**:
 A named stage in a Job Title's pipeline (for example, Screening) that belongs to the Application, never to the global Candidate profile.

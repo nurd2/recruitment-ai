@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -116,7 +116,7 @@ export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
     const [jobTitle] = await db
       .select({ id: jobTitles.id })
       .from(jobTitles)
-      .where(and(eq(jobTitles.id, toJobTitleId), eq(jobTitles.active, true)));
+      .where(and(eq(jobTitles.id, toJobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
     if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
 
     const [status] = await db
@@ -252,7 +252,7 @@ export async function createManualCandidateAction(input: z.infer<typeof manualCa
       const [jobTitle] = await tx
         .select({ id: jobTitles.id })
         .from(jobTitles)
-        .where(and(eq(jobTitles.id, parsed.jobTitleId), eq(jobTitles.active, true)));
+        .where(and(eq(jobTitles.id, parsed.jobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
       if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
 
       const [status] = await tx
@@ -365,7 +365,7 @@ export async function assignCandidateToJobTitleAction(input: z.infer<typeof assi
     const [jobTitle] = await db
       .select({ id: jobTitles.id })
       .from(jobTitles)
-      .where(and(eq(jobTitles.id, jobTitleId), eq(jobTitles.active, true)));
+      .where(and(eq(jobTitles.id, jobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
     if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
 
     const [status] = await db
@@ -425,7 +425,10 @@ export async function suggestMatchesForCandidateAction(candidateId: string) {
     const [candidate] = await db.select().from(candidates).where(eq(candidates.id, candidateId));
     if (!candidate || candidate.deletedAt) throw new Error("CANDIDATE_NOT_FOUND");
 
-    const active = await db.select().from(jobTitles).where(eq(jobTitles.active, true));
+    const active = await db
+      .select()
+      .from(jobTitles)
+      .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
 
     const { recommendations: recs } = await runAiRecommendations({
       fields: {

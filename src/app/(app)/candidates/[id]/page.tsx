@@ -103,7 +103,7 @@ export default async function CandidateDetailPage({
       ? await db
           .select({ id: jobTitles.id, title: jobTitles.title })
           .from(jobTitles)
-          .where(eq(jobTitles.active, true))
+           .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)))
           .orderBy(asc(jobTitles.title))
       : [];
 

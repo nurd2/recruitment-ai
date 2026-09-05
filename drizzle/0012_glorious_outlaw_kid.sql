@@ -1,0 +1,1 @@
+ALTER TABLE "job_title" ADD COLUMN "deleted_at" timestamp;

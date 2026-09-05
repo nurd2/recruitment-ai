@@ -15,6 +15,9 @@ export const competencySchema = z.object({
 export const jobTitleInputSchema = z.object({
   title: z.string().trim().min(1).max(200),
   openings: z.coerce.number().int().min(1).max(1000).default(1),
+  grade: z.string().trim().min(1).max(100),
+  recruitmentStartDate: z.string().date(),
+  slaWorkingDays: z.coerce.number().int().positive().max(1000),
   description: z.string().max(10000).optional().default(""),
   competencies: z.array(competencySchema).default([]),
   minYearsExperience: z.coerce.number().min(0).max(100).default(0),
@@ -24,6 +27,17 @@ export const jobTitleInputSchema = z.object({
   workArrangement: z.string().max(100).optional().default(""),
   language: z.string().max(100).optional().default(""),
   lifecycleStatus: z.enum(JOB_TITLE_LIFECYCLE_STATUSES).default("active"),
+});
+
+export const slaPolicySchema = z.object({
+  grade: z.string().trim().min(1).max(100),
+  workingDays: z.coerce.number().int().positive().max(1000),
+});
+
+export const holidaySchema = z.object({
+  date: z.string().date(),
+  name: z.string().trim().min(1).max(300),
+  type: z.enum(["national_holiday", "collective_leave"]),
 });
 
 export const statusInputSchema = z.object({

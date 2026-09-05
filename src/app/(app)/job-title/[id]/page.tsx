@@ -50,7 +50,10 @@ export default async function JobTitleDetailPage({
     : "";
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
 
-  const [title] = await db.select().from(jobTitles).where(eq(jobTitles.id, id));
+  const [title] = await db
+    .select()
+    .from(jobTitles)
+    .where(and(eq(jobTitles.id, id), isNull(jobTitles.deletedAt)));
   if (!title) notFound();
 
   const statuses = await db
@@ -64,7 +67,7 @@ export default async function JobTitleDetailPage({
     await db
       .select({ id: jobTitles.id, title: jobTitles.title })
       .from(jobTitles)
-      .where(eq(jobTitles.active, true))
+      .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)))
       .orderBy(asc(jobTitles.title))
   ).filter((t) => t.id !== id);
 

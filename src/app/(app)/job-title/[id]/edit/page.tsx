@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db";
@@ -7,13 +7,17 @@ import { JobTitleForm } from "@/components/app/job-title-form";
 import { StatusEditor } from "@/components/app/status-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireAdminPage } from "@/lib/authz";
+import { getSlaPolicies } from "@/app/actions/sla";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditJobTitlePage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPage();
   const { id } = await params;
-  const [title] = await db.select().from(jobTitles).where(eq(jobTitles.id, id));
+  const [title] = await db
+    .select()
+    .from(jobTitles)
+    .where(and(eq(jobTitles.id, id), isNull(jobTitles.deletedAt)));
   if (!title) notFound();
 
   const statuses = await db
@@ -21,6 +25,7 @@ export default async function EditJobTitlePage({ params }: { params: Promise<{ i
     .from(jobTitleStatuses)
     .where(and(eq(jobTitleStatuses.jobTitleId, id), eq(jobTitleStatuses.active, true)))
     .orderBy(asc(jobTitleStatuses.position));
+  const policies = await getSlaPolicies();
 
   return (
     <div className="grid max-w-2xl gap-8">
@@ -38,6 +43,9 @@ export default async function EditJobTitlePage({ params }: { params: Promise<{ i
             initial={{
               title: title.title,
               openings: title.openings,
+              grade: title.grade,
+              recruitmentStartDate: title.recruitmentStartDate ?? title.createdAt.toISOString().slice(0, 10),
+              slaWorkingDays: title.slaWorkingDays,
               description: title.description ?? "",
               competencies: title.competencies ?? [],
               minYearsExperience: title.minYearsExperience,
@@ -48,6 +56,7 @@ export default async function EditJobTitlePage({ params }: { params: Promise<{ i
               language: title.language ?? "",
               lifecycleStatus: title.lifecycleStatus,
             }}
+            policies={policies}
           />
         </CardContent>
       </Card>

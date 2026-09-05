@@ -3,7 +3,7 @@
 import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { jobTitleStatuses, jobTitles } from "@/db/schema";
+import { jobTitleStatuses, jobTitles, slaPolicies } from "@/db/schema";
 import { requireAdmin } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { runAiJobTitleAutofill } from "@/lib/ai/autofill";
@@ -35,6 +35,9 @@ export async function createJobTitleAction(input: JobTitleInput) {
       .values({
         title: parsed.title,
         openings: parsed.openings,
+        grade: parsed.grade,
+        recruitmentStartDate: parsed.recruitmentStartDate,
+        slaWorkingDays: await getSlaDays(parsed.grade, parsed.slaWorkingDays),
         description: parsed.description || null,
         competencies: parsed.competencies,
         minYearsExperience: parsed.minYearsExperience,
@@ -78,6 +81,9 @@ export async function updateJobTitleAction(id: string, input: JobTitleInput) {
       .set({
         title: parsed.title,
         openings: parsed.openings,
+        grade: parsed.grade,
+        recruitmentStartDate: parsed.recruitmentStartDate,
+        slaWorkingDays: await getSlaDays(parsed.grade, parsed.slaWorkingDays),
         description: parsed.description || null,
         competencies: parsed.competencies,
         minYearsExperience: parsed.minYearsExperience,
@@ -103,16 +109,23 @@ export async function updateJobTitleAction(id: string, input: JobTitleInput) {
   });
 }
 
-export async function deactivateJobTitleAction(id: string) {
+async function getSlaDays(grade: string, requestedDays: number) {
+  const [policy] = await db.select().from(slaPolicies).where(eq(slaPolicies.grade, grade));
+  if (!policy) throw new Error("SLA_NOT_CONFIGURED");
+  if (policy.workingDays !== requestedDays) throw new Error("SLA_VALUE_MISMATCH");
+  return policy.workingDays;
+}
+
+export async function deleteJobTitleAction(id: string) {
   return runAction(async () => {
     const actor = await requireAdmin();
     await db
       .update(jobTitles)
-      .set({ active: false, lifecycleStatus: "fulfilled", updatedAt: new Date() })
+      .set({ active: false, deletedAt: new Date(), updatedAt: new Date() })
       .where(eq(jobTitles.id, id));
     await recordAudit({
       actorId: actor.id,
-      action: "job_title.deactivate",
+      action: "job_title.delete",
       entityType: "job_title",
       entityId: id,
     });
@@ -153,6 +166,8 @@ export async function addStatusAction(jobTitleId: string, name: string, color?: 
 export async function updateStatusAction(statusId: string, name: string) {
   return runAction(async () => {
     const actor = await requireAdmin();
+    const [existing] = await db.select().from(jobTitleStatuses).where(eq(jobTitleStatuses.id, statusId));
+    if (existing?.name === "Hired") throw new Error("HIRED_STATUS_LOCKED");
     const parsed = statusInputSchema.parse({ name });
     await db
       .update(jobTitleStatuses)
@@ -213,6 +228,8 @@ export async function reorderStatusesAction(jobTitleId: string, orderedIds: stri
 export async function deactivateStatusAction(statusId: string) {
   return runAction(async () => {
     const actor = await requireAdmin();
+    const [existing] = await db.select().from(jobTitleStatuses).where(eq(jobTitleStatuses.id, statusId));
+    if (existing?.name === "Hired") throw new Error("HIRED_STATUS_LOCKED");
     await db
       .update(jobTitleStatuses)
       .set({ active: false, updatedAt: new Date() })

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import { jobTitles } from "@/db/schema";
@@ -16,7 +16,7 @@ export default async function NewCandidatePage({ params }: { params: Promise<{ i
   const [jobTitle] = await db
     .select({ id: jobTitles.id, title: jobTitles.title, active: jobTitles.active })
     .from(jobTitles)
-    .where(eq(jobTitles.id, id));
+    .where(and(eq(jobTitles.id, id), isNull(jobTitles.deletedAt)));
   if (!jobTitle || !jobTitle.active) notFound();
 
   return (

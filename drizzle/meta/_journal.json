@@ -78,6 +78,20 @@
       "when": 1787639836710,
       "tag": "0010_long_viper",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788616915662,
+      "tag": "0011_dapper_master_mold",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788621415785,
+      "tag": "0012_glorious_outlaw_kid",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { Worker } from "bullmq";
 
 import { db } from "@/db";
@@ -134,7 +134,7 @@ export async function processDocument(
     const active = await db
       .select()
       .from(jobTitles)
-      .where(eq(jobTitles.active, true));
+      .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
 
     const { recommendations: recs, provider: recProvider, model: recModel } =
       await runAiRecommendations({

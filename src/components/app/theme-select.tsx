@@ -27,7 +27,7 @@ export function ThemeSelect() {
 
   return (
     <Select value={value} onValueChange={(v) => setTheme(v ?? "system")}>
-      <SelectTrigger size="sm" aria-label="Theme" className="w-30">
+      <SelectTrigger size="sm" aria-label="Theme" className="w-full">
         <SelectValue>
           {(v) => {
             const current = OPTIONS.find((o) => o.value === v);

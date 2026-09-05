@@ -7,6 +7,7 @@ import {
   account,
   jobTitleStatuses,
   jobTitles,
+  slaPolicies,
   user,
 } from "@/db/schema";
 import { colorForDefaultStatus } from "@/lib/status-colors";
@@ -28,6 +29,10 @@ const DEFAULT_STATUSES = [
  *   bun run db:seed
  */
 async function seed() {
+  await db.insert(slaPolicies).values([
+    { grade: "staff", workingDays: 30 },
+    { grade: "manager", workingDays: 60 },
+  ]).onConflictDoNothing();
   const productionSeed =
     process.env.NODE_ENV === "production" || process.env.SEED_MODE === "production";
   const adminEmail = productionSeed
@@ -121,6 +126,9 @@ async function seed() {
       .insert(jobTitles)
       .values({
         title: "Frontend Engineer",
+        grade: "staff",
+        recruitmentStartDate: new Date().toISOString().slice(0, 10),
+        slaWorkingDays: 30,
         description:
           "Build and maintain user-facing web applications using React and TypeScript.",
         competencies: [

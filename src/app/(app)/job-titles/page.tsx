@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc } from "drizzle-orm";
+import { desc, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import { jobTitles } from "@/db/schema";
@@ -8,12 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { JOB_TITLE_LIFECYCLE_LABELS } from "@/lib/job-title-status";
 import { getSessionUser } from "@/lib/authz";
+import { JobTitleActions } from "@/components/app/job-title-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function JobTitlesPage() {
   const user = await getSessionUser();
-  const titles = await db.select().from(jobTitles).orderBy(desc(jobTitles.createdAt));
+  const titles = await db
+    .select()
+    .from(jobTitles)
+    .where(isNull(jobTitles.deletedAt))
+    .orderBy(desc(jobTitles.createdAt));
 
   return (
     <div className="grid gap-6">
@@ -36,11 +41,15 @@ export default async function JobTitlesPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {titles.map((t) => (
             <Card key={t.id}>
-              <CardHeader>
-                <CardTitle className="grid gap-2">
-                  <Link href={`/job-title/${t.id}`} className="hover:underline">
-                    {t.title}
-                  </Link>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="min-w-0">
+                      <Link href={`/job-title/${t.id}`} className="hover:underline">
+                        {t.title}
+                      </Link>
+                    </CardTitle>
+                    {user?.role === "admin" ? <JobTitleActions id={t.id} title={t.title} /> : null}
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">
                       {JOB_TITLE_LIFECYCLE_LABELS[t.lifecycleStatus] ?? t.lifecycleStatus}
@@ -50,8 +59,7 @@ export default async function JobTitlesPage() {
                       {t.minYearsExperience ? `${t.minYearsExperience} yr` : "—"}
                     </Badge>
                   </div>
-                </CardTitle>
-              </CardHeader>
+                </CardHeader>
               <CardContent className="grid gap-2 text-sm text-muted-foreground">
                 <p className="line-clamp-2">{t.description || "No description"}</p>
                 <p>

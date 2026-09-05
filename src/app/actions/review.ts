@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -50,7 +50,10 @@ export async function rematchRecommendationsAction(input: z.infer<typeof rematch
       .where(eq(processingResults.resumeDocumentId, resumeDocumentId));
     if (!result) throw new Error("PROCESSING_RESULT_NOT_FOUND");
 
-    const active = await db.select().from(jobTitles).where(eq(jobTitles.active, true));
+    const active = await db
+      .select()
+      .from(jobTitles)
+      .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
 
     const {
       recommendations: recs,
@@ -146,7 +149,7 @@ export async function confirmReviewAction(input: z.infer<typeof confirmReviewSch
       const [jobTitle] = await db
         .select({ id: jobTitles.id })
         .from(jobTitles)
-        .where(and(eq(jobTitles.id, parsed.jobTitleId), eq(jobTitles.active, true)));
+        .where(and(eq(jobTitles.id, parsed.jobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
       if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
     }
 

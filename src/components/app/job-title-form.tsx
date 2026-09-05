@@ -51,6 +51,9 @@ const WORK_TYPES = [
 type Initial = {
   title: string;
   openings: number;
+  grade: string;
+  recruitmentStartDate: string;
+  slaWorkingDays: number;
   description: string;
   competencies: { name: string; required: boolean }[];
   minYearsExperience: number;
@@ -66,10 +69,12 @@ export function JobTitleForm({
   mode,
   id,
   initial,
+  policies,
 }: {
   mode: "create" | "edit";
   id?: string;
   initial?: Initial;
+  policies: { grade: string; workingDays: number }[];
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -77,6 +82,10 @@ export function JobTitleForm({
   const [promptOpen, setPromptOpen] = useState(false);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [openings, setOpenings] = useState(String(initial?.openings ?? 1));
+  const [grade, setGrade] = useState(initial?.grade ?? policies[0]?.grade ?? "");
+  const [recruitmentStartDate, setRecruitmentStartDate] = useState(
+    initial?.recruitmentStartDate ?? new Date().toISOString().slice(0, 10),
+  );
   const [description, setDescription] = useState(initial?.description ?? "");
   const [competencies, setCompetencies] = useState(
     (initial?.competencies ?? []).map((c) => `${c.name}${c.required ? " *" : ""}`).join("\n"),
@@ -128,6 +137,7 @@ export function JobTitleForm({
     e.preventDefault();
     setLoading(true);
     const form = new FormData(e.currentTarget);
+    const submittedGrade = String(form.get("grade") ?? "");
     const parsedCompetencies = String(form.get("competencies") ?? "")
       .split("\n")
       .map((line) => line.trim())
@@ -139,6 +149,9 @@ export function JobTitleForm({
     const input = {
       title: String(form.get("title") ?? ""),
       openings: Number(form.get("openings") ?? 1) || 1,
+      grade: submittedGrade,
+      recruitmentStartDate: String(form.get("recruitmentStartDate") ?? ""),
+      slaWorkingDays: policies.find((policy) => policy.grade === submittedGrade)?.workingDays ?? 0,
       description: String(form.get("description") ?? ""),
       competencies: parsedCompetencies,
       minYearsExperience: Number(form.get("minYearsExperience") ?? 0) || 0,
@@ -175,6 +188,26 @@ export function JobTitleForm({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Frontend Engineer"
         />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="grade">Grade *</Label>
+          <Select
+            name="grade"
+            required
+            value={grade}
+            onValueChange={(value) => setGrade(value ?? "")}
+          >
+            <SelectTrigger id="grade" className="w-full"><SelectValue placeholder="Select a grade" /></SelectTrigger>
+            <SelectContent>
+              {policies.map((policy) => <SelectItem key={policy.grade} value={policy.grade} label={policy.grade}>{policy.grade} ({policy.workingDays} working days)</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="recruitmentStartDate">Recruitment start date *</Label>
+          <Input id="recruitmentStartDate" name="recruitmentStartDate" type="date" required value={recruitmentStartDate} onChange={(e) => setRecruitmentStartDate(e.target.value)} />
+        </div>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="openings">Number of openings *</Label>

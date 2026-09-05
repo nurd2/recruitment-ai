@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -117,7 +117,10 @@ export default async function ReviewPage({
     );
   const titleIds = [...new Set(recRows.map((r) => r.jobTitleId))];
   const titles = titleIds.length
-    ? await db.select().from(jobTitles).where(inArray(jobTitles.id, titleIds))
+    ? await db
+        .select()
+        .from(jobTitles)
+        .where(and(inArray(jobTitles.id, titleIds), isNull(jobTitles.deletedAt)))
     : [];
   const titleById = new Map(titles.map((t) => [t.id, t.title]));
   const recs = recRows.map((r) => ({
@@ -132,12 +135,12 @@ export default async function ReviewPage({
   });
 
   const contextTitle = job.jobTitleId
-    ? (await db.select().from(jobTitles).where(eq(jobTitles.id, job.jobTitleId)))[0]
+     ? (await db.select().from(jobTitles).where(and(eq(jobTitles.id, job.jobTitleId), isNull(jobTitles.deletedAt))))[0]
     : null;
   const availableJobTitles = await db
     .select({ id: jobTitles.id, title: jobTitles.title })
     .from(jobTitles)
-    .where(eq(jobTitles.active, true))
+    .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)))
     .orderBy(asc(jobTitles.title));
 
   return (

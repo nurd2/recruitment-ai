@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 
@@ -9,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Add Candidate",
+};
 
 export default async function NewCandidatePage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPage();

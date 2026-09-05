@@ -1,4 +1,5 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db";
@@ -10,6 +11,10 @@ import { requireAdminPage } from "@/lib/authz";
 import { getSlaPolicies } from "@/app/actions/sla";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Edit Job Title",
+};
 
 export default async function EditJobTitlePage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPage();

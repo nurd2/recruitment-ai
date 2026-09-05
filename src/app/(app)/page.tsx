@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { and, count, eq, inArray, isNull } from "drizzle-orm";
+import type { Metadata } from "next";
+import { aliasedTable, and, count, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import { applications, applicationStatusHistory, candidates, holidays, jobTitleStatuses, jobTitles } from "@/db/schema";
@@ -9,11 +10,15 @@ import { DashboardCharts } from "@/components/app/dashboard-charts";
 import { aggregatePipelineStatusCounts } from "@/lib/pipeline-chart";
 import { CANDIDATE_SOURCE_LABELS, type CandidateSource } from "@/lib/resume-sources";
 import { requireUser } from "@/lib/authz";
-import { currentSlaState, hireIsCompliant } from "@/lib/sla";
+import { currentSlaState, getCurrentHireRows, groupCurrentHireDates, hireIsCompliant } from "@/lib/sla";
 import { countWorkingDays } from "@/lib/working-days";
 import { SlaDashboard } from "@/components/app/sla-dashboard";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -78,30 +83,31 @@ export default async function DashboardPage() {
     value: Number(n),
   }));
   const pipelineData = aggregatePipelineStatusCounts(pipelineCounts);
+  const currentStatuses = aliasedTable(jobTitleStatuses, "current_job_title_status");
+  const hiredStatuses = aliasedTable(jobTitleStatuses, "hired_job_title_status");
   const [titles, holidayRows, hireRows] = await Promise.all([
     db.select().from(jobTitles).where(isNull(jobTitles.deletedAt)),
     db.select({ date: holidays.date }).from(holidays),
-    db.select({ jobTitleId: jobTitles.id, title: jobTitles.title, grade: jobTitles.grade, target: jobTitles.slaWorkingDays, openings: jobTitles.openings, start: jobTitles.recruitmentStartDate, changedAt: applicationStatusHistory.changedAt })
+    db.select({ jobTitleId: jobTitles.id, applicationId: applications.id, title: jobTitles.title, grade: jobTitles.grade, target: jobTitles.slaWorkingDays, openings: jobTitles.openings, start: jobTitles.recruitmentStartDate, currentStatus: currentStatuses.name, withdrawn: applications.withdrawn, candidateDeletedAt: candidates.deletedAt, changedAt: applicationStatusHistory.changedAt })
       .from(applicationStatusHistory)
       .innerJoin(applications, eq(applicationStatusHistory.applicationId, applications.id))
+      .innerJoin(candidates, eq(applications.candidateId, candidates.id))
       .innerJoin(jobTitles, eq(applications.jobTitleId, jobTitles.id))
-      .innerJoin(jobTitleStatuses, eq(applicationStatusHistory.toStatusId, jobTitleStatuses.id))
-       .where(and(eq(jobTitleStatuses.name, "Hired"), isNull(jobTitles.deletedAt))),
+      .innerJoin(currentStatuses, eq(applications.currentStatusId, currentStatuses.id))
+      .innerJoin(hiredStatuses, eq(applicationStatusHistory.toStatusId, hiredStatuses.id))
+      .where(and(eq(hiredStatuses.name, "Hired"), isNull(jobTitles.deletedAt))),
   ]);
   const holidayDates = holidayRows.map((row) => row.date);
   const today = new Date().toISOString().slice(0, 10);
-  const hiredByTitle = new Map<string, string[]>();
-  for (const hire of hireRows) {
-    const key = hire.jobTitleId;
-    hiredByTitle.set(key, [...(hiredByTitle.get(key) ?? []), hire.changedAt.toISOString().slice(0, 10)]);
-  }
+  const currentHireRows = getCurrentHireRows(hireRows);
+  const hiredByTitle = groupCurrentHireDates(currentHireRows);
   const slaRows = titles.map((title) => {
     const start = title.recruitmentStartDate ?? title.createdAt.toISOString().slice(0, 10);
     const hiredDates = hiredByTitle.get(title.id) ?? [];
     return { title: title.title, grade: title.grade, target: title.slaWorkingDays, openings: title.openings, hired: hiredDates.length, elapsed: Math.max(0, countWorkingDays(start, today, holidayDates)), state: currentSlaState({ start, today, targetDays: title.slaWorkingDays, openings: title.openings, hiredDates, holidays: holidayDates }) };
   });
   const monthly = new Map<string, { compliant: number; breached: number }>();
-  for (const hire of hireRows) {
+  for (const hire of currentHireRows) {
     const date = hire.changedAt.toISOString().slice(0, 7);
     const item = monthly.get(date) ?? { compliant: 0, breached: 0 };
     if (hire.start && hireIsCompliant(hire.start, hire.changedAt.toISOString().slice(0, 10), hire.target, holidayDates)) item.compliant++;

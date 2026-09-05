@@ -1,6 +1,12 @@
 import { JobTitleForm } from "@/components/app/job-title-form";
 import { requireAdminPage } from "@/lib/authz";
+import type { Metadata } from "next";
+
 import { getSlaPolicies } from "@/app/actions/sla";
+
+export const metadata: Metadata = {
+  title: "Create Job Title",
+};
 
 export default async function NewJobTitlePage() {
   await requireAdminPage();

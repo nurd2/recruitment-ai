@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
+
 import { getHolidays, getSlaPolicies } from "@/app/actions/sla";
 import { SlaAdmin } from "@/components/app/sla-admin";
 import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "SLA & Holiday Calendar",
+};
 
 export default async function AdminSlaPage() {
   await requireAdminPage();

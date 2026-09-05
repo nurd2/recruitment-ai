@@ -2,6 +2,34 @@ import { countWorkingDays } from "@/lib/working-days";
 
 export type SlaState = "on_track" | "at_risk" | "breached" | "compliant" | "partially_breached";
 
+export type CurrentHireRow = {
+  applicationId: string;
+  jobTitleId: string;
+  currentStatus: string;
+  withdrawn: boolean;
+  candidateDeletedAt: Date | null;
+  changedAt: Date;
+};
+
+export function getCurrentHireRows<T extends CurrentHireRow>(rows: T[]) {
+  const latestHireByApplication = new Map<string, T>();
+  for (const row of rows) {
+    if (row.currentStatus !== "Hired" || row.withdrawn || row.candidateDeletedAt) continue;
+    const previous = latestHireByApplication.get(row.applicationId);
+    if (!previous || row.changedAt > previous.changedAt) latestHireByApplication.set(row.applicationId, row);
+  }
+  return [...latestHireByApplication.values()];
+}
+
+export function groupCurrentHireDates(rows: CurrentHireRow[]) {
+  const datesByTitle = new Map<string, string[]>();
+  for (const row of getCurrentHireRows(rows)) {
+    const dates = datesByTitle.get(row.jobTitleId) ?? [];
+    datesByTitle.set(row.jobTitleId, [...dates, row.changedAt.toISOString().slice(0, 10)]);
+  }
+  return datesByTitle;
+}
+
 export function hireIsCompliant(start: string, hiredAt: string, targetDays: number, holidays: string[]) {
   return countWorkingDays(start, hiredAt, holidays) <= targetDays;
 }

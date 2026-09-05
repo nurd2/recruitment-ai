@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { desc, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -12,6 +13,10 @@ import { formatDate } from "@/lib/format";
 import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Processing Jobs",
+};
 
 export default async function ProcessingPage() {
   const user = await getSessionUser();

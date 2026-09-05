@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { desc, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -11,6 +12,10 @@ import { getSessionUser } from "@/lib/authz";
 import { JobTitleActions } from "@/components/app/job-title-actions";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Job Titles",
+};
 
 export default async function JobTitlesPage() {
   const user = await getSessionUser();

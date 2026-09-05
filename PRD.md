@@ -1,4 +1,4 @@
-# Product Requirements Document: AI Recruitment Monitoring System
+# Product Requirements Document: Recruva
 
 ## Document Purpose
 

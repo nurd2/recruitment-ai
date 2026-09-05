@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
+
 import { getSessionUser } from "@/lib/authz";
 import { LoginForm } from "@/components/app/login-form";
 import { ThemeSelect } from "@/components/app/theme-select";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+};
 
 export default async function LoginPage() {
   const user = await getSessionUser();

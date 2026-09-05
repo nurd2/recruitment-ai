@@ -1,4 +1,4 @@
-# AI Recruitment Monitoring System (MVP)
+# Recruva
 
 Single-tenant recruitment platform: manage job titles and hiring criteria, upload PDF/DOCX resumes, extract candidate data with text/OCR + AI validation, review AI job-title recommendations, and monitor candidates in a per-job-title pipeline. AI is decision support only — an application is created only after a recruiter explicitly confirms a job title.
 

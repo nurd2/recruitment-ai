@@ -1,4 +1,5 @@
 import { asc } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db";
@@ -7,6 +8,10 @@ import { requireAdminPage } from "@/lib/authz";
 import { AiAdmin, type AiConfigRow } from "@/components/app/ai-admin";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "AI Configuration",
+};
 
 export default async function AdminAiPage() {
   try {

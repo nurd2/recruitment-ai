@@ -78,7 +78,7 @@ export function SlaDashboard({ rows, months }: { rows: Row[]; months: Month[] })
       </section>
       <ChartPanel
         title="SLA compliance of hires"
-        description="All hire history, grouped by month."
+        description="Current hires, grouped by their latest Hired date."
         emptyMessage="No completed hires yet."
         isEmpty={months.length === 0}
       >

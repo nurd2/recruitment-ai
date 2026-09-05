@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -25,6 +26,10 @@ import {
 import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Candidate Pool",
+};
 
 const PAGE_SIZE = 10;
 

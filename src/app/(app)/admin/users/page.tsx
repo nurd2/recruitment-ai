@@ -1,4 +1,5 @@
 import { asc } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db";
@@ -7,6 +8,10 @@ import { requireAdminPage } from "@/lib/authz";
 import { UserAdmin, type UserRow } from "@/components/app/user-admin";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "User Management",
+};
 
 export default async function AdminUsersPage() {
   let admin;

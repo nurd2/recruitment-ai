@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 
@@ -19,6 +20,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Review Resume",
+};
 
 export default async function ReviewPage({
   params,

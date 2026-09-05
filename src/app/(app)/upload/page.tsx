@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { desc, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -11,6 +12,10 @@ import { formatDate, fileSize } from "@/lib/format";
 import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Upload CV",
+};
 
 const stateStyle: Record<string, string> = {
   queued: "secondary",

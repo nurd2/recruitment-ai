@@ -54,13 +54,13 @@ export function Nav({ user }: { user: SessionUser }) {
           <SidebarMenuItem>
             <Link
               href="/"
-              aria-label="Recruit home"
-              title="Recruit"
+              aria-label="Recruva home"
+              title="Recruva"
               className="flex h-14 w-full items-center group-data-[collapsible=icon]:justify-center"
             >
               <Image
-                src="/logo-recruit.png"
-                alt="Recruit"
+                src="/recruva-logo.png"
+                alt="Recruva"
                 width={260}
                 height={80}
                 className="h-20 w-auto group-data-[collapsible=icon]:hidden"

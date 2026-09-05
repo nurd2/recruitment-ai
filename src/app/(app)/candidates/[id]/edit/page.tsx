@@ -1,4 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db";
@@ -7,6 +8,10 @@ import { CandidateEditForm } from "@/components/app/candidate-edit-form";
 import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Edit Candidate",
+};
 
 export default async function EditCandidatePage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdminPage();

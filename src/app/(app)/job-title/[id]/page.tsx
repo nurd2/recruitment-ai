@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { and, asc, count, desc, eq, ilike, isNull, or } from "drizzle-orm";
 
@@ -30,6 +31,19 @@ import { JOB_TITLE_LIFECYCLE_LABELS } from "@/lib/job-title-status";
 import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const [title] = await db
+    .select({ title: jobTitles.title })
+    .from(jobTitles)
+    .where(and(eq(jobTitles.id, id), isNull(jobTitles.deletedAt)));
+  return { title: title?.title ?? "Job Title" };
+}
 
 const PAGE_SIZE = 10;
 

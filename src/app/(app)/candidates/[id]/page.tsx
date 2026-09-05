@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -24,6 +25,19 @@ import { CANDIDATE_SOURCE_LABELS, type CandidateSource } from "@/lib/resume-sour
 import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const [candidate] = await db
+    .select({ fullName: candidates.fullName })
+    .from(candidates)
+    .where(and(eq(candidates.id, id), isNull(candidates.deletedAt)));
+  return { title: candidate?.fullName ?? "Candidate" };
+}
 
 const fromStatuses = alias(jobTitleStatuses, "from_status");
 const toStatuses = alias(jobTitleStatuses, "to_status");

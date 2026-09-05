@@ -14,7 +14,7 @@ import {
   processingResults,
   recommendations,
 } from "@/db/schema";
-import { requireRole } from "@/lib/authz";
+import { requireAdmin } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { recordAudit } from "@/lib/audit";
 import { candidateFieldsSchema, candidateSourceSchema } from "@/lib/validation";
@@ -41,7 +41,7 @@ const rematchSchema = z.object({
  */
 export async function rematchRecommendationsAction(input: z.infer<typeof rematchSchema>) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const { resumeDocumentId, fields } = rematchSchema.parse(input);
 
     const [result] = await db
@@ -132,7 +132,7 @@ export async function rematchRecommendationsAction(input: z.infer<typeof rematch
  */
 export async function confirmReviewAction(input: z.infer<typeof confirmReviewSchema>) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const parsed = confirmReviewSchema.parse(input);
     const { resumeDocumentId, fields } = parsed;
 

@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { forbidden } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 
@@ -40,6 +41,15 @@ export async function requireRole(...roles: Role[]): Promise<SessionUser> {
 
 export async function requireAdmin(): Promise<SessionUser> {
   return requireRole("admin");
+}
+
+export async function requireAdminPage(): Promise<SessionUser> {
+  try {
+    return await requireAdmin();
+  } catch (error) {
+    if (error instanceof AuthError && error.message === "FORBIDDEN") forbidden();
+    throw error;
+  }
 }
 
 export class AuthError extends Error {

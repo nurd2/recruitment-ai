@@ -16,6 +16,7 @@ import { findDedupMatches } from "@/lib/dedup";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function ReviewPage({
 }: {
   params: Promise<{ resumeDocumentId: string }>;
 }) {
+  await requireAdminPage();
   const { resumeDocumentId } = await params;
   const [doc] = await db
     .select()

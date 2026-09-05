@@ -1,6 +1,8 @@
 import { JobTitleForm } from "@/components/app/job-title-form";
+import { requireAdminPage } from "@/lib/authz";
 
-export default function NewJobTitlePage() {
+export default async function NewJobTitlePage() {
+  await requireAdminPage();
   return (
     <div className="grid max-w-2xl gap-4">
       <div>

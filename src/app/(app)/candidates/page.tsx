@@ -22,6 +22,7 @@ import {
   RESUME_SOURCES,
   type CandidateSource,
 } from "@/lib/resume-sources";
+import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function CandidatesPage({
 }: {
   searchParams: Promise<{ q?: string; source?: string; page?: string }>;
 }) {
+  const user = await getSessionUser();
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
   const source = RESUME_SOURCES.includes(sp.source as CandidateSource)
@@ -94,9 +96,11 @@ export default async function CandidatesPage({
       </div>
       <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
         <CandidatePoolFilter q={q} source={source} />
-        <Button variant="outline" nativeButton={false} render={<Link href="/upload" />}>
-          Upload CV
-        </Button>
+        {user?.role === "admin" ? (
+          <Button variant="outline" nativeButton={false} render={<Link href="/upload" />}>
+            Upload CV
+          </Button>
+        ) : null}
       </div>
       <Card>
         <CardContent className="p-0">
@@ -140,7 +144,7 @@ export default async function CandidatesPage({
                     <TableCell>{countByCandidate.get(c.id) ?? 0}</TableCell>
                     <TableCell>{formatDate(c.createdAt)}</TableCell>
                     <TableCell className="text-right">
-                      <DeleteCandidateButton candidateId={c.id} />
+                      {user?.role === "admin" ? <DeleteCandidateButton candidateId={c.id} /> : null}
                     </TableCell>
                   </TableRow>
                 ))

@@ -3,14 +3,14 @@ import { notFound } from "next/navigation";
 
 import { db } from "@/db";
 import { aiConfigs } from "@/db/schema";
-import { requireAdmin } from "@/lib/authz";
+import { requireAdminPage } from "@/lib/authz";
 import { AiAdmin, type AiConfigRow } from "@/components/app/ai-admin";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAiPage() {
   try {
-    await requireAdmin();
+    await requireAdminPage();
   } catch {
     notFound();
   }

@@ -4,7 +4,7 @@ import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { jobTitleStatuses, jobTitles } from "@/db/schema";
-import { requireRole } from "@/lib/authz";
+import { requireAdmin } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { runAiJobTitleAutofill } from "@/lib/ai/autofill";
 import { recordAudit } from "@/lib/audit";
@@ -17,7 +17,7 @@ type JobTitleInput = z.infer<typeof jobTitleInputSchema>;
 
 export async function autofillJobTitleAction(input: { title: string; prompt: string }) {
   return runAction(async () => {
-    await requireRole("admin", "recruiter");
+    await requireAdmin();
     const title = input.title.trim();
     const prompt = input.prompt.trim();
     if (!title) throw new Error("A job title is required before using Auto-fill.");
@@ -28,7 +28,7 @@ export async function autofillJobTitleAction(input: { title: string; prompt: str
 
 export async function createJobTitleAction(input: JobTitleInput) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const parsed = jobTitleInputSchema.parse(input);
     const [title] = await db
       .insert(jobTitles)
@@ -71,7 +71,7 @@ export async function createJobTitleAction(input: JobTitleInput) {
 
 export async function updateJobTitleAction(id: string, input: JobTitleInput) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const parsed = jobTitleInputSchema.parse(input);
     const [updated] = await db
       .update(jobTitles)
@@ -105,7 +105,7 @@ export async function updateJobTitleAction(id: string, input: JobTitleInput) {
 
 export async function deactivateJobTitleAction(id: string) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     await db
       .update(jobTitles)
       .set({ active: false, lifecycleStatus: "fulfilled", updatedAt: new Date() })
@@ -122,7 +122,7 @@ export async function deactivateJobTitleAction(id: string) {
 
 export async function addStatusAction(jobTitleId: string, name: string, color?: StatusColor) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const parsed = statusInputSchema.parse({ name });
     const parsedColor = color ? statusColorSchema.parse({ color }).color : "gray";
     const statuses = await db
@@ -152,7 +152,7 @@ export async function addStatusAction(jobTitleId: string, name: string, color?: 
 
 export async function updateStatusAction(statusId: string, name: string) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const parsed = statusInputSchema.parse({ name });
     await db
       .update(jobTitleStatuses)
@@ -171,7 +171,7 @@ export async function updateStatusAction(statusId: string, name: string) {
 
 export async function setStatusColorAction(statusId: string, color: string) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const parsed = statusColorSchema.parse({ color });
     await db
       .update(jobTitleStatuses)
@@ -190,7 +190,7 @@ export async function setStatusColorAction(statusId: string, color: string) {
 
 export async function reorderStatusesAction(jobTitleId: string, orderedIds: string[]) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     for (let i = 0; i < orderedIds.length; i++) {
       await db
         .update(jobTitleStatuses)
@@ -212,7 +212,7 @@ export async function reorderStatusesAction(jobTitleId: string, orderedIds: stri
 
 export async function deactivateStatusAction(statusId: string) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     await db
       .update(jobTitleStatuses)
       .set({ active: false, updatedAt: new Date() })

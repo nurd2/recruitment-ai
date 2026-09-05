@@ -151,9 +151,11 @@ export default async function DashboardPage() {
                 {fulfillmentRate.toFixed(0)}%
               </span>
             </Link>
-            <Button nativeButton={false} render={<Link href="/job-titles/new" />}>
-              Create job title
-            </Button>
+            {user.role === "admin" ? (
+              <Button nativeButton={false} render={<Link href="/job-titles/new" />}>
+                Create job title
+              </Button>
+            ) : null}
           </div>
         </div>
       </div>

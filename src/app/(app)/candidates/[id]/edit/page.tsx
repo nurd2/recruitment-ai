@@ -4,10 +4,12 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { candidates } from "@/db/schema";
 import { CandidateEditForm } from "@/components/app/candidate-edit-form";
+import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditCandidatePage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const { id } = await params;
   const [candidate] = await db
     .select()

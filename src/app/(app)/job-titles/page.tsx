@@ -7,22 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { JOB_TITLE_LIFECYCLE_LABELS } from "@/lib/job-title-status";
+import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 export default async function JobTitlesPage() {
-  const titles = await db
-    .select()
-    .from(jobTitles)
-    .orderBy(desc(jobTitles.createdAt));
+  const user = await getSessionUser();
+  const titles = await db.select().from(jobTitles).orderBy(desc(jobTitles.createdAt));
 
   return (
     <div className="grid gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Job titles</h1>
-        <Button nativeButton={false} render={<Link href="/job-titles/new" />}>
-          Create job title
-        </Button>
+        {user?.role === "admin" ? (
+          <Button nativeButton={false} render={<Link href="/job-titles/new" />}>
+            Create job title
+          </Button>
+        ) : null}
       </div>
 
       {titles.length === 0 ? (
@@ -54,8 +55,9 @@ export default async function JobTitlesPage() {
               <CardContent className="grid gap-2 text-sm text-muted-foreground">
                 <p className="line-clamp-2">{t.description || "No description"}</p>
                 <p>
-                  {[t.location, t.workType, t.workArrangement, t.minEducation].filter(Boolean).join(" · ") ||
-                    "No criteria set"}
+                  {[t.location, t.workType, t.workArrangement, t.minEducation]
+                    .filter(Boolean)
+                    .join(" · ") || "No criteria set"}
                 </p>
               </CardContent>
             </Card>

@@ -27,6 +27,7 @@ import {
   type CandidateSource,
 } from "@/lib/resume-sources";
 import { JOB_TITLE_LIFECYCLE_LABELS } from "@/lib/job-title-status";
+import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function JobTitleDetailPage({
   searchParams: Promise<{ q?: string; status?: string; source?: string; page?: string }>;
 }) {
   const { id } = await params;
+  const user = await getSessionUser();
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
   const statusId = sp.status ?? "";
@@ -128,30 +130,34 @@ export default async function JobTitleDetailPage({
               .join(" · ")}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            nativeButton={false}
-            render={<Link href={`/job-title/${id}/candidates/new`} />}
-          >
-            Add candidate
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            nativeButton={false}
-            render={<Link href={`/job-title/${id}/edit`} />}
-          >
-            Edit criteria &amp; statuses
-          </Button>
-        </div>
+        {user?.role === "admin" ? (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/job-title/${id}/candidates/new`} />}
+            >
+              Add candidate
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/job-title/${id}/edit`} />}
+            >
+              Edit criteria &amp; statuses
+            </Button>
+          </div>
+        ) : null}
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <UploadForm jobTitleId={id} label="Upload CV for this job title (PDF or DOCX)" />
-        </CardContent>
-      </Card>
+      {user?.role === "admin" ? (
+        <Card>
+          <CardContent className="pt-6">
+            <UploadForm jobTitleId={id} label="Upload CV for this job title (PDF or DOCX)" />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-3">
         <PipelineFilter q={q} statusId={statusId} source={source} statuses={statuses} />
@@ -218,6 +224,7 @@ export default async function JobTitleDetailPage({
                           currentStatusId={application.currentStatusId}
                           statuses={statuses}
                           otherJobTitles={otherJobTitles}
+                          isAdmin={user?.role === "admin"}
                         />
                       </TableCell>
                     </TableRow>

@@ -6,14 +6,12 @@ import { jobTitleStatuses, jobTitles } from "@/db/schema";
 import { JobTitleForm } from "@/components/app/job-title-form";
 import { StatusEditor } from "@/components/app/status-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditJobTitlePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EditJobTitlePage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const { id } = await params;
   const [title] = await db.select().from(jobTitles).where(eq(jobTitles.id, id));
   if (!title) notFound();
@@ -21,12 +19,7 @@ export default async function EditJobTitlePage({
   const statuses = await db
     .select()
     .from(jobTitleStatuses)
-    .where(
-      and(
-        eq(jobTitleStatuses.jobTitleId, id),
-        eq(jobTitleStatuses.active, true),
-      ),
-    )
+    .where(and(eq(jobTitleStatuses.jobTitleId, id), eq(jobTitleStatuses.active, true)))
     .orderBy(asc(jobTitleStatuses.position));
 
   return (

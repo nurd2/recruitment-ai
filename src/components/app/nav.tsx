@@ -18,7 +18,6 @@ import { ChevronDown } from "lucide-react";
 const links = [
   { href: "/", label: "Home" },
   { href: "/job-titles", label: "Job Titles" },
-  { href: "/upload", label: "Upload CV" },
   { href: "/candidates", label: "Candidates" },
   { href: "/processing", label: "Processing" },
 ];
@@ -42,14 +41,15 @@ export function Nav({ user }: { user: SessionUser }) {
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={linkClass(l.href)}
-            >
+            <Link key={l.href} href={l.href} className={linkClass(l.href)}>
               {l.label}
             </Link>
           ))}
+          {user.role === "admin" ? (
+            <Link href="/upload" className={linkClass("/upload")}>
+              Upload CV
+            </Link>
+          ) : null}
           {user.role === "admin" ? (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -67,9 +67,7 @@ export function Nav({ user }: { user: SessionUser }) {
                 <DropdownMenuItem render={<Link href="/admin/users" />}>
                   User management
                 </DropdownMenuItem>
-                <DropdownMenuItem render={<Link href="/admin/ai" />}>
-                  AI Provider
-                </DropdownMenuItem>
+                <DropdownMenuItem render={<Link href="/admin/ai" />}>AI Provider</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}

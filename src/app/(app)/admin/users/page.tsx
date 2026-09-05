@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import { db } from "@/db";
 import { user } from "@/db/schema";
-import { requireAdmin } from "@/lib/authz";
+import { requireAdminPage } from "@/lib/authz";
 import { UserAdmin, type UserRow } from "@/components/app/user-admin";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage() {
   let admin;
   try {
-    admin = await requireAdmin();
+    admin = await requireAdminPage();
   } catch {
     notFound();
   }

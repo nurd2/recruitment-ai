@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDate } from "@/lib/format";
+import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProcessingPage() {
+  const user = await getSessionUser();
   const jobs = await db
     .select()
     .from(processingJobs)
@@ -23,12 +25,7 @@ export default async function ProcessingPage() {
     ? await db
         .select()
         .from(resumeDocuments)
-        .where(
-          inArray(
-            resumeDocuments.id,
-            [...new Set(jobs.map((j) => j.resumeDocumentId))],
-          ),
-        )
+        .where(inArray(resumeDocuments.id, [...new Set(jobs.map((j) => j.resumeDocumentId))]))
     : [];
   const docById = new Map(docs.map((d) => [d.id, d]));
 
@@ -65,9 +62,7 @@ export default async function ProcessingPage() {
                       {j.state} · {j.stage} · attempts {j.attempts} · {formatDate(j.createdAt)}
                     </span>
                     {j.correlationId ? (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {j.correlationId}
-                      </span>
+                      <span className="ml-2 text-xs text-muted-foreground">{j.correlationId}</span>
                     ) : null}
                     {j.lastError ? (
                       <p className="mt-1 text-xs text-destructive">{j.lastError}</p>
@@ -83,7 +78,7 @@ export default async function ProcessingPage() {
                     >
                       {j.state}
                     </Badge>
-                    {j.state === "failed" ? (
+                    {user?.role === "admin" && j.state === "failed" ? (
                       <form
                         action={async () => {
                           "use server";
@@ -95,7 +90,9 @@ export default async function ProcessingPage() {
                         </Button>
                       </form>
                     ) : null}
-                    <DeleteDocumentButton resumeDocumentId={j.resumeDocumentId} />
+                    {user?.role === "admin" ? (
+                      <DeleteDocumentButton resumeDocumentId={j.resumeDocumentId} />
+                    ) : null}
                   </div>
                 </div>
               );

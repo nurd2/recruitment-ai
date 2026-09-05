@@ -8,6 +8,7 @@ import { UploadActions } from "@/components/app/upload-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, fileSize } from "@/lib/format";
+import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ const stateStyle: Record<string, string> = {
 };
 
 export default async function UploadPage() {
+  await requireAdminPage();
   const docs = await db
     .select()
     .from(resumeDocuments)
@@ -54,8 +56,8 @@ export default async function UploadPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Upload CV</h1>
         <p className="text-sm text-muted-foreground">
-          General intake without a job title. After processing you&apos;ll review the
-          draft and select (or reject) a job title recommendation.
+          General intake without a job title. After processing you&apos;ll review the draft and
+          select (or reject) a job title recommendation.
         </p>
       </div>
 
@@ -81,10 +83,7 @@ export default async function UploadPage() {
                   className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-3 py-2 text-sm"
                 >
                   <div>
-                    <Link
-                      href={`/review/${d.id}`}
-                      className="font-medium hover:underline"
-                    >
+                    <Link href={`/review/${d.id}`} className="font-medium hover:underline">
                       {d.originalName}
                     </Link>
                     <span className="ml-2 text-muted-foreground">
@@ -92,7 +91,9 @@ export default async function UploadPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={stateStyle[job?.state ?? "queued"] as "secondary" | "destructive"}>
+                    <Badge
+                      variant={stateStyle[job?.state ?? "queued"] as "secondary" | "destructive"}
+                    >
                       {job?.state ?? "queued"}
                     </Badge>
                     {job ? (

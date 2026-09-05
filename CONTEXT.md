@@ -5,7 +5,7 @@ The recruitment context is where hiring needs (Job Titles), candidate resumes, A
 ## Language
 
 **Candidate**:
-A person profile built from one or more Resume Documents, or entered directly by a recruiter through manual intake. A resume-based Candidate exists only after a recruiter reviews and confirms a Processing Result (draft); a manual Candidate has no Resume Document unless one is added later.
+A person profile built from one or more Resume Documents, or entered directly through manual intake. A resume-based Candidate exists only after an administrator reviews and confirms a Processing Result (draft); a manual Candidate has no Resume Document unless one is added later.
 _Avoid_: Applicant, prospect, contact
 
 **Application**:
@@ -27,7 +27,7 @@ _Avoid_: CV file
 The known channel or origin through which a Candidate was obtained, such as a job portal, referral, agency, manual entry, or direct upload. It belongs to the Candidate's intake provenance and may be unknown. A Resume Document retains only file-level provenance.
 
 **Processing Result**:
-The structured draft extracted from a Resume Document: normalized fields plus per-field provenance, confidence, and evidence. This is the single draft entity a recruiter reviews.
+The structured draft extracted from a Resume Document: normalized fields plus per-field provenance, confidence, and evidence. This is the single draft entity an administrator reviews.
 _Avoid_: Extraction, Validation (kept as separate entities)
 
 **Processing Job**:
@@ -39,7 +39,7 @@ An AI decision-support suggestion linking a Candidate to a Job Title. A recommen
 _Avoid_: Match, suggestion
 
 **Confirm**:
-The recruiter's explicit action that turns a Processing Result into a Candidate (and, when a Job Title is chosen, an Application). Manual intake creates a Candidate directly and attaches it to the selected Job Title in the same explicit action.
+An administrator's explicit action that turns a Processing Result into a Candidate (and, when a Job Title is chosen, an Application). Manual intake creates a Candidate directly and attaches it to the selected Job Title in the same explicit action.
 _Avoid_: Accept, approve
 
 **Withdraw**:
@@ -51,7 +51,7 @@ Soft-delete a Candidate and cascade to its applications and resume documents.
 _Avoid_: Purge, erase
 
 **Deduplication**:
-Matching a new Resume Document against existing Candidates by email, then phone, then name; the recruiter decides reuse versus new.
+Matching a new Resume Document against existing Candidates by email, then phone, then name; the administrator decides reuse versus new.
 _Avoid_: Auto-merge, merge
 
 **AI Provider**:

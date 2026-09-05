@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ageFromDob, formatDate, formatWorkExperienceDate } from "@/lib/format";
 import { CANDIDATE_SOURCE_LABELS, type CandidateSource } from "@/lib/resume-sources";
+import { getSessionUser } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export default async function CandidateDetailPage({
   searchParams: Promise<{ fromJobTitle?: string }>;
 }) {
   const { id } = await params;
+  const user = await getSessionUser();
   const { fromJobTitle } = await searchParams;
   const [candidate] = await db
     .select()
@@ -134,17 +136,19 @@ export default async function CandidateDetailPage({
               : "—"}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            nativeButton={false}
-            render={<Link href={`/candidates/${candidate.id}/edit`} />}
-          >
-            Edit
-          </Button>
-          <DeleteCandidateButton candidateId={candidate.id} />
-        </div>
+        {user?.role === "admin" ? (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={`/candidates/${candidate.id}/edit`} />}
+            >
+              Edit
+            </Button>
+            <DeleteCandidateButton candidateId={candidate.id} />
+          </div>
+        ) : null}
       </div>
 
       <Card>
@@ -306,7 +310,12 @@ export default async function CandidateDetailPage({
                 No applications. This candidate is in the unassigned pool. Assign a job title, or
                 suggest matches from the profile.
               </p>
-              <CandidateAssign candidateId={candidate.id} availableJobTitles={availableJobTitles} />
+              {user?.role === "admin" ? (
+                <CandidateAssign
+                  candidateId={candidate.id}
+                  availableJobTitles={availableJobTitles}
+                />
+              ) : null}
             </div>
           ) : (
             appRows.map(({ application, title, statusName, statusColor }) => (

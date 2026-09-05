@@ -6,10 +6,12 @@ import { db } from "@/db";
 import { jobTitles } from "@/db/schema";
 import { ManualCandidateForm } from "@/components/app/manual-candidate-form";
 import { Button } from "@/components/ui/button";
+import { requireAdminPage } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewCandidatePage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdminPage();
   const { id } = await params;
   const [jobTitle] = await db
     .select({ id: jobTitles.id, title: jobTitles.title, active: jobTitles.active })

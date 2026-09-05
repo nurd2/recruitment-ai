@@ -37,6 +37,7 @@ type Props = {
   currentStatusId: string | null;
   statuses: { id: string; name: string; color: string | null }[];
   otherJobTitles: { id: string; title: string }[];
+  isAdmin: boolean;
 };
 
 type ConfirmState = {
@@ -55,6 +56,7 @@ export function CandidateActions({
   currentStatusId,
   statuses,
   otherJobTitles,
+  isAdmin,
 }: Props) {
   const router = useRouter();
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
@@ -89,101 +91,114 @@ export function CandidateActions({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button variant="ghost" size="icon-sm" aria-label="Candidate actions">
-              <MoreHorizontal className="size-4" />
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          </DropdownMenuGroup>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger>Change status</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {statuses.map((s) => (
-                <DropdownMenuItem
-                  key={s.id}
-                  disabled={s.id === currentStatusId}
-                  onClick={() => changeStatus(s.id)}
-                >
-                  <span className={cn("size-2 shrink-0 rounded-full", statusDotClass(s.color))} />
-                  {s.name}
-                  {s.id === currentStatusId ? " (current)" : ""}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-          {otherJobTitles.length > 0 ? (
+      {!isAdmin ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          nativeButton={false}
+          render={<Link href={`/candidates/${candidateId}?fromJobTitle=${jobTitleId}`} />}
+          aria-label="Open candidate"
+        >
+          <UserRound className="size-4" />
+        </Button>
+      ) : null}
+      {isAdmin ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" size="icon-sm" aria-label="Candidate actions">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <ArrowRightLeft className="size-4" /> Move to job title
-              </DropdownMenuSubTrigger>
+              <DropdownMenuSubTrigger>Change status</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {otherJobTitles.map((t) => (
-                  <DropdownMenuItem key={t.id} onClick={() => moveTo(t.id)}>
-                    {t.title}
+                {statuses.map((s) => (
+                  <DropdownMenuItem
+                    key={s.id}
+                    disabled={s.id === currentStatusId}
+                    onClick={() => changeStatus(s.id)}
+                  >
+                    <span className={cn("size-2 shrink-0 rounded-full", statusDotClass(s.color))} />
+                    {s.name}
+                    {s.id === currentStatusId ? " (current)" : ""}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-          ) : null}
-          <DropdownMenuItem
-            render={<Link href={`/candidates/${candidateId}?fromJobTitle=${jobTitleId}`} />}
-          >
-            <UserRound className="size-4" /> Open candidate
-          </DropdownMenuItem>
-          <DropdownMenuItem render={<Link href={`/candidates/${candidateId}/edit`} />}>
-            <Pencil className="size-4" /> Edit candidate
-          </DropdownMenuItem>
-          {resumeDocumentId ? (
+            {otherJobTitles.length > 0 ? (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <ArrowRightLeft className="size-4" /> Move to job title
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {otherJobTitles.map((t) => (
+                    <DropdownMenuItem key={t.id} onClick={() => moveTo(t.id)}>
+                      {t.title}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ) : null}
             <DropdownMenuItem
-              render={
-                <a
-                  href={`/api/resumes/${resumeDocumentId}/download`}
-                  target="_blank"
-                  rel="noreferrer"
-                />
+              render={<Link href={`/candidates/${candidateId}?fromJobTitle=${jobTitleId}`} />}
+            >
+              <UserRound className="size-4" /> Open candidate
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href={`/candidates/${candidateId}/edit`} />}>
+              <Pencil className="size-4" /> Edit candidate
+            </DropdownMenuItem>
+            {resumeDocumentId ? (
+              <DropdownMenuItem
+                render={
+                  <a
+                    href={`/api/resumes/${resumeDocumentId}/download`}
+                    target="_blank"
+                    rel="noreferrer"
+                  />
+                }
+              >
+                <FileDown className="size-4" /> Open resume
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() =>
+                setConfirm({
+                  title: "Withdraw application?",
+                  description:
+                    "This deactivates the application. The candidate and their other applications are retained.",
+                  confirmLabel: "Withdraw",
+                  destructive: false,
+                  action: withdraw,
+                })
               }
             >
-              <FileDown className="size-4" /> Open resume
+              <UserRound className="size-4" /> Withdraw application
             </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() =>
-              setConfirm({
-                title: "Withdraw application?",
-                description:
-                  "This deactivates the application. The candidate and their other applications are retained.",
-                confirmLabel: "Withdraw",
-                destructive: false,
-                action: withdraw,
-              })
-            }
-          >
-            <UserRound className="size-4" /> Withdraw application
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() =>
-              setConfirm({
-                title: "Delete candidate?",
-                description:
-                  "This soft-deletes the candidate, their applications, and resume document. The action is recorded in the audit log.",
-                confirmLabel: "Delete",
-                destructive: true,
-                action: removeCandidate,
-              })
-            }
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="size-4" /> Delete candidate
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <DropdownMenuItem
+              onClick={() =>
+                setConfirm({
+                  title: "Delete candidate?",
+                  description:
+                    "This soft-deletes the candidate, their applications, and resume document. The action is recorded in the audit log.",
+                  confirmLabel: "Delete",
+                  destructive: true,
+                  action: removeCandidate,
+                })
+              }
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="size-4" /> Delete candidate
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
 
       <ConfirmDialog
         open={confirm !== null}

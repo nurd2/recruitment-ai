@@ -3,12 +3,8 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import {
-  processingJobs,
-  processingResults,
-  recommendations,
-} from "@/db/schema";
-import { requireRole } from "@/lib/authz";
+import { processingJobs, processingResults, recommendations } from "@/db/schema";
+import { requireAdmin } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { recordAudit } from "@/lib/audit";
 import { shortId } from "@/lib/ids";
@@ -16,7 +12,7 @@ import { JOB_ATTEMPTS, documentQueue } from "@/worker/queue";
 
 export async function retryProcessingAction(processingJobId: string) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const [job] = await db
       .select()
       .from(processingJobs)
@@ -74,17 +70,13 @@ export async function retryProcessingAction(processingJobId: string) {
  */
 export async function deleteProcessingAction(resumeDocumentId: string) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
 
-    await db
-      .delete(recommendations)
-      .where(eq(recommendations.resumeDocumentId, resumeDocumentId));
+    await db.delete(recommendations).where(eq(recommendations.resumeDocumentId, resumeDocumentId));
     await db
       .delete(processingResults)
       .where(eq(processingResults.resumeDocumentId, resumeDocumentId));
-    await db
-      .delete(processingJobs)
-      .where(eq(processingJobs.resumeDocumentId, resumeDocumentId));
+    await db.delete(processingJobs).where(eq(processingJobs.resumeDocumentId, resumeDocumentId));
 
     await recordAudit({
       actorId: actor.id,

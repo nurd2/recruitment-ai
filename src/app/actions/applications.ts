@@ -12,7 +12,7 @@ import {
   jobTitleStatuses,
   resumeDocuments,
 } from "@/db/schema";
-import { requireRole } from "@/lib/authz";
+import { requireAdmin } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { recordAudit } from "@/lib/audit";
 import { findDedupMatches } from "@/lib/dedup";
@@ -26,7 +26,7 @@ const statusChangeSchema = z.object({
 
 export async function changeApplicationStatusAction(input: z.infer<typeof statusChangeSchema>) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const { applicationId, toStatusId } = statusChangeSchema.parse(input);
 
     const [app] = await db.select().from(applications).where(eq(applications.id, applicationId));
@@ -66,10 +66,10 @@ export async function changeApplicationStatusAction(input: z.infer<typeof status
           ),
         );
       if (jobTitle && Number(hired.n) >= jobTitle.openings) {
-      await db
-        .update(jobTitles)
-        .set({ lifecycleStatus: "fulfilled", active: false, updatedAt: new Date() })
-        .where(eq(jobTitles.id, app.jobTitleId));
+        await db
+          .update(jobTitles)
+          .set({ lifecycleStatus: "fulfilled", active: false, updatedAt: new Date() })
+          .where(eq(jobTitles.id, app.jobTitleId));
       }
     }
 
@@ -106,7 +106,7 @@ const moveSchema = z.object({
  */
 export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const { applicationId, toJobTitleId } = moveSchema.parse(input);
 
     const [app] = await db.select().from(applications).where(eq(applications.id, applicationId));
@@ -173,7 +173,7 @@ export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
 
 export async function withdrawApplicationAction(applicationId: string) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     await db
       .update(applications)
       .set({ withdrawn: true, withdrawnAt: new Date(), updatedAt: new Date() })
@@ -190,7 +190,7 @@ export async function withdrawApplicationAction(applicationId: string) {
 
 export async function deleteCandidateAction(candidateId: string) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
 
     const [candidate] = await db.select().from(candidates).where(eq(candidates.id, candidateId));
     if (!candidate || candidate.deletedAt) throw new Error("CANDIDATE_NOT_FOUND");
@@ -234,7 +234,7 @@ const manualCandidateSchema = candidateEditSchema.extend({
 
 export async function createManualCandidateAction(input: z.infer<typeof manualCandidateSchema>) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const parsed = manualCandidateSchema.parse(input);
     const matches = await findDedupMatches(parsed);
 
@@ -353,7 +353,7 @@ export async function createManualCandidateAction(input: z.infer<typeof manualCa
  */
 export async function assignCandidateToJobTitleAction(input: z.infer<typeof assignSchema>) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const { candidateId, jobTitleId } = assignSchema.parse(input);
 
     const [candidate] = await db
@@ -419,7 +419,7 @@ export async function assignCandidateToJobTitleAction(input: z.infer<typeof assi
  */
 export async function suggestMatchesForCandidateAction(candidateId: string) {
   return runAction(async () => {
-    await requireRole("admin", "recruiter");
+    await requireAdmin();
     z.string().uuid().parse(candidateId);
 
     const [candidate] = await db.select().from(candidates).where(eq(candidates.id, candidateId));
@@ -476,7 +476,7 @@ export async function editCandidateAction(
   fields: z.infer<typeof candidateEditSchema>,
 ) {
   return runAction(async () => {
-    const actor = await requireRole("admin", "recruiter");
+    const actor = await requireAdmin();
     const parsed = candidateEditSchema.parse(fields);
 
     const [before] = await db.select().from(candidates).where(eq(candidates.id, candidateId));

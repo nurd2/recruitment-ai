@@ -25,6 +25,9 @@ One attempt to recruit a Candidate for a Job Title. A rehire after withdrawal st
 A hiring need with criteria (description, competencies, minimum experience/education, location, work type), a grade, a recruitment start date, and its own ordered status pipeline.
 _Avoid_: Role, position
 
+**Unassigned Application**:
+An Application retained as Candidate history after its Job Title is removed. It has no Job Title or Application Status and is not part of an active pipeline or any dashboard calculation.
+
 **Grade**:
 The organizational hiring level assigned to a Job Title, such as staff or manager. A Grade has an SLA Policy.
 
@@ -79,9 +82,15 @@ _Avoid_: Accept, approve
 Deactivate an Application — removes the candidate from that pipeline while retaining the Candidate and their other applications.
 _Avoid_: Remove candidate
 
+**Withdrawal Date**:
+The business date on which an Application was actually withdrawn, selected by an administrator. It is distinct from the system timestamp recording when the withdrawal was processed.
+
 **Delete**:
 Soft-delete a Candidate and cascade to its applications and resume documents.
 _Avoid_: Purge, erase
+
+**Remove Job Title**:
+Soft-delete a Job Title and treat it as permanently unavailable. Its Applications remain as unassigned Candidate history, while Job Title-specific operational data is removed and audit history is retained.
 
 **Deduplication**:
 Matching a new Resume Document against existing Candidates by email, then phone, then name; the administrator decides reuse versus new.

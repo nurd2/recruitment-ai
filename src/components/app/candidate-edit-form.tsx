@@ -6,12 +6,23 @@ import { useRouter } from "@bprogress/next/app";
 import { editCandidateAction } from "@/app/actions/applications";
 import { CandidateProfileFields } from "@/components/app/candidate-profile-fields";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { CANDIDATE_SOURCE_LABELS, RESUME_SOURCES, type CandidateSource } from "@/lib/resume-sources";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  CANDIDATE_SOURCE_LABELS,
+  RESUME_SOURCES,
+  type CandidateSource,
+} from "@/lib/resume-sources";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function CandidateEditForm({
   candidateId,
@@ -49,6 +60,7 @@ export function CandidateEditForm({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [dateOfBirth, setDateOfBirth] = useState(initial.dateOfBirth);
   const [education, setEducation] = useState(initial.education);
   const [workExperience, setWorkExperience] = useState(initial.workExperience);
   const [source, setSource] = useState<CandidateSource | "">(
@@ -112,34 +124,37 @@ export function CandidateEditForm({
         </div>
         <div className="grid gap-2">
           <Label htmlFor="dateOfBirth">Date of birth</Label>
-          <Input
+          <DatePicker
             id="dateOfBirth"
             name="dateOfBirth"
-            type="date"
-            defaultValue={initial.dateOfBirth}
+            value={dateOfBirth}
+            onChange={setDateOfBirth}
           />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="location">Location</Label>
           <Input id="location" name="location" defaultValue={initial.location} />
         </div>
-          <div className="grid gap-2">
-            <Label htmlFor="source">Candidate source</Label>
-            <Select value={source} onValueChange={(value) => setSource((value ?? "") as CandidateSource | "")}>
-              <SelectTrigger id="source" className="w-full">
-                <SelectValue placeholder="Select source">
-                  {source ? CANDIDATE_SOURCE_LABELS[source] : undefined}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {RESUME_SOURCES.map((value) => (
-                  <SelectItem key={value} value={value} label={CANDIDATE_SOURCE_LABELS[value]}>
-                    {CANDIDATE_SOURCE_LABELS[value]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="grid gap-2">
+          <Label htmlFor="source">Candidate source</Label>
+          <Select
+            value={source}
+            onValueChange={(value) => setSource((value ?? "") as CandidateSource | "")}
+          >
+            <SelectTrigger id="source" className="w-full">
+              <SelectValue placeholder="Select source">
+                {source ? CANDIDATE_SOURCE_LABELS[source] : undefined}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {RESUME_SOURCES.map((value) => (
+                <SelectItem key={value} value={value} label={CANDIDATE_SOURCE_LABELS[value]}>
+                  {CANDIDATE_SOURCE_LABELS[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="grid gap-2">
           <Label htmlFor="totalYearsExperience">Total years of experience</Label>
           <Input

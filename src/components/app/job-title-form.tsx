@@ -10,6 +10,7 @@ import {
   updateJobTitleAction,
 } from "@/app/actions/job-titles";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -198,15 +199,27 @@ export function JobTitleForm({
             value={grade}
             onValueChange={(value) => setGrade(value ?? "")}
           >
-            <SelectTrigger id="grade" className="w-full"><SelectValue placeholder="Select a grade" /></SelectTrigger>
+            <SelectTrigger id="grade" className="w-full">
+              <SelectValue placeholder="Select a grade" />
+            </SelectTrigger>
             <SelectContent>
-              {policies.map((policy) => <SelectItem key={policy.grade} value={policy.grade} label={policy.grade}>{policy.grade} ({policy.workingDays} working days)</SelectItem>)}
+              {policies.map((policy) => (
+                <SelectItem key={policy.grade} value={policy.grade} label={policy.grade}>
+                  {policy.grade} ({policy.workingDays} working days)
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="recruitmentStartDate">Recruitment start date *</Label>
-          <Input id="recruitmentStartDate" name="recruitmentStartDate" type="date" required value={recruitmentStartDate} onChange={(e) => setRecruitmentStartDate(e.target.value)} />
+          <DatePicker
+            id="recruitmentStartDate"
+            name="recruitmentStartDate"
+            required
+            value={recruitmentStartDate}
+            onChange={setRecruitmentStartDate}
+          />
         </div>
       </div>
       <div className="grid gap-2">
@@ -364,7 +377,9 @@ export function JobTitleForm({
           <Select
             name="lifecycleStatus"
             value={lifecycleStatus}
-            onValueChange={(value) => setLifecycleStatus((value ?? "active") as JobTitleLifecycleStatus)}
+            onValueChange={(value) =>
+              setLifecycleStatus((value ?? "active") as JobTitleLifecycleStatus)
+            }
           >
             <SelectTrigger id="lifecycleStatus" className="w-full">
               <SelectValue />

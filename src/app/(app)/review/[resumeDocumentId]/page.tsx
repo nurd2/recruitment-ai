@@ -46,7 +46,21 @@ export default async function ReviewPage({
     .limit(1);
   const job = jobs[0];
 
-  if (!job || job.state === "queued" || job.state === "processing") {
+  if (!job) {
+    return (
+      <Card>
+        <CardContent className="grid gap-2 py-12 text-center">
+          <p className="font-medium">Processing entry no longer available</p>
+          <p className="text-sm text-muted-foreground">
+            The job title context or processing entry was removed. The resume document is still
+            retained.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (job.state === "queued" || job.state === "processing") {
     return (
       <Card>
         <CardContent className="grid gap-2 py-12 text-center">
@@ -128,10 +142,10 @@ export default async function ReviewPage({
         .where(and(inArray(jobTitles.id, titleIds), isNull(jobTitles.deletedAt)))
     : [];
   const titleById = new Map(titles.map((t) => [t.id, t.title]));
-  const recs = recRows.map((r) => ({
-    ...r,
-    jobTitle: titleById.get(r.jobTitleId) ?? "Unknown",
-  }));
+  const recs = recRows.flatMap((r) => {
+    const jobTitle = titleById.get(r.jobTitleId);
+    return jobTitle ? [{ ...r, jobTitle }] : [];
+  });
 
   const dedup = await findDedupMatches({
     email: result.fields.email ?? null,
@@ -140,8 +154,25 @@ export default async function ReviewPage({
   });
 
   const contextTitle = job.jobTitleId
-     ? (await db.select().from(jobTitles).where(and(eq(jobTitles.id, job.jobTitleId), isNull(jobTitles.deletedAt))))[0]
+    ? (
+        await db
+          .select()
+          .from(jobTitles)
+          .where(and(eq(jobTitles.id, job.jobTitleId), isNull(jobTitles.deletedAt)))
+      )[0]
     : null;
+  if (job.jobTitleId && !contextTitle) {
+    return (
+      <Card>
+        <CardContent className="grid gap-2 py-12 text-center">
+          <p className="font-medium">Job title context no longer available</p>
+          <p className="text-sm text-muted-foreground">
+            This processing entry cannot be reviewed because its Job Title was removed.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
   const availableJobTitles = await db
     .select({ id: jobTitles.id, title: jobTitles.title })
     .from(jobTitles)

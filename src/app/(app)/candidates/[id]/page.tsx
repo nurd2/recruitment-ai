@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { ArrowLeft } from "lucide-react";
 
@@ -78,9 +78,17 @@ export default async function CandidateDetailPage({
       statusColor: jobTitleStatuses.color,
     })
     .from(applications)
-    .innerJoin(jobTitles, eq(applications.jobTitleId, jobTitles.id))
+    .leftJoin(jobTitles, eq(applications.jobTitleId, jobTitles.id))
     .leftJoin(jobTitleStatuses, eq(applications.currentStatusId, jobTitleStatuses.id))
-    .where(and(eq(applications.candidateId, id), eq(applications.withdrawn, false)))
+    .where(
+      and(
+        eq(applications.candidateId, id),
+        or(
+          isNull(applications.jobTitleId),
+          and(eq(applications.withdrawn, false), isNull(jobTitles.deletedAt)),
+        ),
+      ),
+    )
     .orderBy(desc(applications.createdAt));
 
   const returnJobTitleId = appRows.some((row) => row.application.jobTitleId === fromJobTitle)
@@ -112,14 +120,14 @@ export default async function CandidateDetailPage({
     historyByApp.set(h.history.applicationId, arr);
   }
 
-  const availableJobTitles =
-    appRows.length === 0
-      ? await db
-          .select({ id: jobTitles.id, title: jobTitles.title })
-          .from(jobTitles)
-           .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)))
-          .orderBy(asc(jobTitles.title))
-      : [];
+  const hasAssignedApplication = appRows.some((row) => row.application.jobTitleId !== null);
+  const availableJobTitles = !hasAssignedApplication
+    ? await db
+        .select({ id: jobTitles.id, title: jobTitles.title })
+        .from(jobTitles)
+        .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)))
+        .orderBy(asc(jobTitles.title))
+    : [];
 
   return (
     <div className="grid max-w-3xl gap-6">
@@ -335,12 +343,16 @@ export default async function CandidateDetailPage({
             appRows.map(({ application, title, statusName, statusColor }) => (
               <div key={application.id} className="rounded-2xl border p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Link
-                    href={`/job-title/${application.jobTitleId}`}
-                    className="font-medium hover:underline"
-                  >
-                    {title}
-                  </Link>
+                  {application.jobTitleId && title ? (
+                    <Link
+                      href={`/job-title/${application.jobTitleId}`}
+                      className="font-medium hover:underline"
+                    >
+                      {title}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">Unassigned application</span>
+                  )}
                   <StatusBadge name={statusName} color={statusColor} />
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -358,6 +370,9 @@ export default async function CandidateDetailPage({
               </div>
             ))
           )}
+          {appRows.some((row) => row.application.jobTitleId === null) && user?.role === "admin" ? (
+            <CandidateAssign candidateId={candidate.id} availableJobTitles={availableJobTitles} />
+          ) : null}
         </CardContent>
       </Card>
     </div>

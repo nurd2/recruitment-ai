@@ -7,8 +7,17 @@ import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteJobTitleAction } from "@/app/actions/job-titles";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,23 +56,28 @@ export function JobTitleActions({ id, title }: { id: string; title: string }) {
             <Pencil /> Edit
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => setOpen(true)}
-          >
+          <DropdownMenuItem variant="destructive" onClick={() => setOpen(true)}>
             <Trash2 /> Remove
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <ConfirmDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Remove job title?"
-        description="This will remove the job title from the job title list. Existing applications and audit history will be preserved."
-        confirmLabel="Remove"
-        destructive
-        onConfirm={remove}
-      />
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove job title?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the Job Title from operations. Its Applications will be
+              retained as unassigned Candidate history, and audit history will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={remove}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

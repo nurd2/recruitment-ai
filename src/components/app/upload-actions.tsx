@@ -7,8 +7,17 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { deleteProcessingAction, retryProcessingAction } from "@/app/actions/documents";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,15 +86,23 @@ export function UploadActions({ resumeDocumentId, processingJobId, state }: Prop
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete this upload?"
-        description="Removes the upload & processing entry. If a candidate was created from it, the candidate and their resume are kept. Recorded in the audit log."
-        confirmLabel="Delete"
-        destructive
-        onConfirm={remove}
-      />
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this upload?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removes the upload &amp; processing entry. If a candidate was created from it, the
+              candidate and their resume are kept. Recorded in the audit log.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={remove}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -28,6 +28,7 @@ describe("SLA dashboard snapshots", () => {
     const snapshot = buildSlaSnapshot({
       ...common,
       month: "2026-09",
+      today: "2026-09-07",
       hires: [
         {
           applicationId: "application-1",
@@ -35,6 +36,7 @@ describe("SLA dashboard snapshots", () => {
           hiredDate: "2026-09-02",
           withdrawn: true,
           withdrawnAt: new Date("2026-09-10T02:00:00Z"),
+          withdrawalDate: "2026-09-05",
           withdrawalType: "pre_joining",
           hireCanceledAt: null,
         },
@@ -76,5 +78,29 @@ describe("SLA dashboard snapshots", () => {
     });
 
     expect(snapshot.rows[0]?.status).toBe("on_hold");
+  });
+
+  it("excludes removed job titles from the SLA snapshot", () => {
+    const snapshot = buildSlaSnapshot({
+      ...common,
+      month: "2026-09",
+      titles: [{ ...title, deletedAt: new Date("2026-09-03T00:00:00Z") }],
+      hires: [
+        {
+          applicationId: "application-2",
+          jobTitleId: "job-1",
+          hiredDate: "2026-09-02",
+          withdrawn: false,
+          withdrawnAt: null,
+          withdrawalDate: null,
+          withdrawalType: null,
+          hireCanceledAt: null,
+        },
+      ],
+    });
+
+    expect(snapshot.rows).toHaveLength(0);
+    expect(snapshot.summary.totalHeadcount).toBe(0);
+    expect(snapshot.summary.within).toBe(0);
   });
 });

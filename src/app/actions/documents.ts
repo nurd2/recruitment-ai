@@ -1,9 +1,9 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
-import { processingJobs, processingResults, recommendations } from "@/db/schema";
+import { jobTitles, processingJobs, processingResults, recommendations } from "@/db/schema";
 import { requireAdmin } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { recordAudit } from "@/lib/audit";
@@ -18,6 +18,13 @@ export async function retryProcessingAction(processingJobId: string) {
       .from(processingJobs)
       .where(eq(processingJobs.id, processingJobId));
     if (!job) throw new Error("PROCESSING_JOB_NOT_FOUND");
+    if (job.jobTitleId) {
+      const [jobTitle] = await db
+        .select({ id: jobTitles.id })
+        .from(jobTitles)
+        .where(and(eq(jobTitles.id, job.jobTitleId), isNull(jobTitles.deletedAt)));
+      if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
+    }
 
     await db
       .update(processingJobs)

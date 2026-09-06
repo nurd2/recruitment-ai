@@ -20,7 +20,7 @@ import { findDedupMatches } from "@/lib/dedup";
 import { candidateEditSchema } from "@/lib/validation";
 import { runAiRecommendations } from "@/lib/ai/recommend";
 import { jakartaDate } from "@/lib/sla";
-import { hiredDateSchema, withdrawalTypeSchema } from "@/lib/validation";
+import { hiredDateSchema, withdrawalDateSchema, withdrawalTypeSchema } from "@/lib/validation";
 
 const statusChangeSchema = z.object({
   applicationId: z.string().uuid(),
@@ -35,6 +35,13 @@ export async function changeApplicationStatusAction(input: z.infer<typeof status
 
     const [app] = await db.select().from(applications).where(eq(applications.id, applicationId));
     if (!app || app.withdrawn) throw new Error("APPLICATION_NOT_FOUND");
+    if (!app.jobTitleId) throw new Error("APPLICATION_UNASSIGNED");
+
+    const [jobTitle] = await db
+      .select({ id: jobTitles.id })
+      .from(jobTitles)
+      .where(and(eq(jobTitles.id, app.jobTitleId), isNull(jobTitles.deletedAt)));
+    if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
 
     const [status] = await db
       .select()
@@ -132,6 +139,12 @@ export async function updateHiredDateAction(input: { applicationId: string; hire
       .where(eq(applications.id, applicationId));
     if (!application?.hiredDate) throw new Error("HIRE_NOT_FOUND");
     if (application.withdrawn || application.hireCanceledAt) throw new Error("HIRE_NOT_ACTIVE");
+    if (!application.jobTitleId) throw new Error("APPLICATION_UNASSIGNED");
+    const [activeTitle] = await db
+      .select({ id: jobTitles.id })
+      .from(jobTitles)
+      .where(and(eq(jobTitles.id, application.jobTitleId), isNull(jobTitles.deletedAt)));
+    if (!activeTitle) throw new Error("JOB_TITLE_NOT_FOUND");
     const [currentStatus] = application.currentStatusId
       ? await db
           .select({ name: jobTitleStatuses.name })
@@ -181,6 +194,7 @@ export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
 
     const [app] = await db.select().from(applications).where(eq(applications.id, applicationId));
     if (!app || app.withdrawn) throw new Error("APPLICATION_NOT_FOUND");
+    if (!app.jobTitleId) throw new Error("APPLICATION_UNASSIGNED");
     if (app.jobTitleId === toJobTitleId) throw new Error("SAME_JOB_TITLE");
     if (app.hiredDate) throw new Error("HIRED_APPLICATION_CANNOT_MOVE");
 
@@ -253,19 +267,25 @@ export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
 
 const withdrawalSchema = z.object({
   applicationId: z.string().uuid(),
+  withdrawalDate: withdrawalDateSchema,
   withdrawalType: withdrawalTypeSchema,
 });
 
 export async function withdrawApplicationAction(input: z.infer<typeof withdrawalSchema>) {
   return runAction(async () => {
     const actor = await requireAdmin();
-    const { applicationId, withdrawalType } = withdrawalSchema.parse(input);
+    const { applicationId, withdrawalDate, withdrawalType } = withdrawalSchema.parse(input);
     const [application] = await db
       .select({ hiredDate: applications.hiredDate, jobTitleId: applications.jobTitleId })
       .from(applications)
       .where(eq(applications.id, applicationId));
-    await reopenJobTitleIfNeeded(application.jobTitleId, actor.id);
     if (!application) throw new Error("APPLICATION_NOT_FOUND");
+    if (!application.jobTitleId) throw new Error("APPLICATION_UNASSIGNED");
+    const [jobTitle] = await db
+      .select({ id: jobTitles.id })
+      .from(jobTitles)
+      .where(and(eq(jobTitles.id, application.jobTitleId), isNull(jobTitles.deletedAt)));
+    if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
     if (withdrawalType === "pre_joining" && !application.hiredDate) {
       throw new Error("PRE_JOINING_WITHDRAWAL_REQUIRES_HIRE");
     }
@@ -274,10 +294,12 @@ export async function withdrawApplicationAction(input: z.infer<typeof withdrawal
       .set({
         withdrawn: true,
         withdrawnAt: new Date(),
+        withdrawalDate,
         withdrawalType,
         updatedAt: new Date(),
       })
       .where(eq(applications.id, applicationId));
+    await reopenJobTitleIfNeeded(application.jobTitleId, actor.id);
     await recordAudit({
       actorId: actor.id,
       action:
@@ -286,6 +308,7 @@ export async function withdrawApplicationAction(input: z.infer<typeof withdrawal
           : "application.withdraw",
       entityType: "application",
       entityId: applicationId,
+      after: { withdrawalDate, withdrawalType },
     });
     return { applicationId };
   });
@@ -305,6 +328,12 @@ export async function cancelHireAction(input: z.infer<typeof cancelHireSchema>) 
       .from(applications)
       .where(eq(applications.id, applicationId));
     if (!application?.hiredDate) throw new Error("HIRE_NOT_FOUND");
+    if (!application.jobTitleId) throw new Error("APPLICATION_UNASSIGNED");
+    const [activeTitle] = await db
+      .select({ id: jobTitles.id })
+      .from(jobTitles)
+      .where(and(eq(jobTitles.id, application.jobTitleId), isNull(jobTitles.deletedAt)));
+    if (!activeTitle) throw new Error("JOB_TITLE_NOT_FOUND");
     await db
       .update(applications)
       .set({
@@ -312,6 +341,7 @@ export async function cancelHireAction(input: z.infer<typeof cancelHireSchema>) 
         hireCancellationReason: reason,
         withdrawn: true,
         withdrawnAt: new Date(),
+        withdrawalDate: jakartaDate(),
         withdrawalType: "standard",
         updatedAt: new Date(),
       })

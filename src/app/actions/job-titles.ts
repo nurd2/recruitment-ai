@@ -1,14 +1,20 @@
 "use server";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
+  applicationStatusHistory,
+  applications,
+  auditLogs,
   jobTitleHeadcountHistory,
   jobTitleLifecycleHistory,
   jobTitleSlaHistory,
   jobTitleStatuses,
   jobTitles,
+  processingJobs,
+  processingResults,
+  recommendations,
   slaPolicies,
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/authz";
@@ -111,7 +117,8 @@ export async function updateJobTitleAction(id: string, input: JobTitleInput) {
         slaWorkingDays: jobTitles.slaWorkingDays,
       })
       .from(jobTitles)
-      .where(eq(jobTitles.id, id));
+      .where(and(eq(jobTitles.id, id), isNull(jobTitles.deletedAt)));
+    if (!before) throw new Error("JOB_TITLE_NOT_FOUND");
     const [updated] = await db
       .update(jobTitles)
       .set({
@@ -184,23 +191,87 @@ async function getSlaDays(grade: string, requestedDays: number) {
 export async function deleteJobTitleAction(id: string) {
   return runAction(async () => {
     const actor = await requireAdmin();
-    await db
-      .update(jobTitles)
-      .set({ active: false, deletedAt: new Date(), updatedAt: new Date() })
-      .where(eq(jobTitles.id, id));
-    await recordAudit({
-      actorId: actor.id,
-      action: "job_title.delete",
-      entityType: "job_title",
-      entityId: id,
+    await db.transaction(async (tx) => {
+      const [title] = await tx
+        .select({ id: jobTitles.id, title: jobTitles.title })
+        .from(jobTitles)
+        .where(and(eq(jobTitles.id, id), isNull(jobTitles.deletedAt)));
+      if (!title) throw new Error("JOB_TITLE_NOT_FOUND");
+
+      const titleApplications = await tx
+        .select({ id: applications.id })
+        .from(applications)
+        .where(eq(applications.jobTitleId, id));
+      const applicationIds = titleApplications.map((application) => application.id);
+
+      const titleJobs = await tx
+        .select({ id: processingJobs.id })
+        .from(processingJobs)
+        .where(eq(processingJobs.jobTitleId, id));
+      const processingJobIds = titleJobs.map((job) => job.id);
+      const titleResults = processingJobIds.length
+        ? await tx
+            .select({ id: processingResults.id })
+            .from(processingResults)
+            .where(inArray(processingResults.processingJobId, processingJobIds))
+        : [];
+      const processingResultIds = titleResults.map((result) => result.id);
+
+      await tx.delete(recommendations).where(eq(recommendations.jobTitleId, id));
+      if (processingResultIds.length > 0) {
+        await tx
+          .delete(recommendations)
+          .where(inArray(recommendations.processingResultId, processingResultIds));
+      }
+      if (processingJobIds.length > 0) {
+        await tx
+          .delete(processingResults)
+          .where(inArray(processingResults.processingJobId, processingJobIds));
+        await tx.delete(processingJobs).where(inArray(processingJobs.id, processingJobIds));
+      }
+      if (applicationIds.length > 0) {
+        await tx
+          .delete(applicationStatusHistory)
+          .where(inArray(applicationStatusHistory.applicationId, applicationIds));
+        await tx
+          .update(applications)
+          .set({ jobTitleId: null, currentStatusId: null, updatedAt: new Date() })
+          .where(inArray(applications.id, applicationIds));
+      }
+
+      await tx.delete(jobTitleStatuses).where(eq(jobTitleStatuses.jobTitleId, id));
+      await tx.delete(jobTitleHeadcountHistory).where(eq(jobTitleHeadcountHistory.jobTitleId, id));
+      await tx.delete(jobTitleLifecycleHistory).where(eq(jobTitleLifecycleHistory.jobTitleId, id));
+      await tx.delete(jobTitleSlaHistory).where(eq(jobTitleSlaHistory.jobTitleId, id));
+      await tx
+        .update(jobTitles)
+        .set({ active: false, deletedAt: new Date(), updatedAt: new Date() })
+        .where(eq(jobTitles.id, id));
+      await tx.insert(auditLogs).values({
+        actorId: actor.id,
+        action: "job_title.delete",
+        entityType: "job_title",
+        entityId: id,
+        before: { title: title.title },
+        after: { deleted: true, applicationsUnassigned: applicationIds.length },
+      });
     });
     return { id };
   });
 }
 
+async function assertActiveJobTitle(jobTitleId: string) {
+  const [title] = await db
+    .select({ id: jobTitles.id })
+    .from(jobTitles)
+    .where(and(eq(jobTitles.id, jobTitleId), isNull(jobTitles.deletedAt)));
+  if (!title) throw new Error("JOB_TITLE_NOT_FOUND");
+}
+
 export async function addStatusAction(jobTitleId: string, name: string, color?: StatusColor) {
   return runAction(async () => {
     const actor = await requireAdmin();
+    await assertActiveJobTitle(jobTitleId);
     const parsed = statusInputSchema.parse({ name });
     const parsedColor = color ? statusColorSchema.parse({ color }).color : "gray";
     const statuses = await db
@@ -236,6 +307,8 @@ export async function updateStatusAction(statusId: string, name: string) {
       .from(jobTitleStatuses)
       .where(eq(jobTitleStatuses.id, statusId));
     if (existing?.name === "Hired") throw new Error("HIRED_STATUS_LOCKED");
+    if (!existing) throw new Error("STATUS_NOT_FOUND");
+    await assertActiveJobTitle(existing.jobTitleId);
     const parsed = statusInputSchema.parse({ name });
     await db
       .update(jobTitleStatuses)
@@ -255,6 +328,12 @@ export async function updateStatusAction(statusId: string, name: string) {
 export async function setStatusColorAction(statusId: string, color: string) {
   return runAction(async () => {
     const actor = await requireAdmin();
+    const [existing] = await db
+      .select({ jobTitleId: jobTitleStatuses.jobTitleId })
+      .from(jobTitleStatuses)
+      .where(eq(jobTitleStatuses.id, statusId));
+    if (!existing) throw new Error("STATUS_NOT_FOUND");
+    await assertActiveJobTitle(existing.jobTitleId);
     const parsed = statusColorSchema.parse({ color });
     await db
       .update(jobTitleStatuses)
@@ -274,6 +353,7 @@ export async function setStatusColorAction(statusId: string, color: string) {
 export async function reorderStatusesAction(jobTitleId: string, orderedIds: string[]) {
   return runAction(async () => {
     const actor = await requireAdmin();
+    await assertActiveJobTitle(jobTitleId);
     for (let i = 0; i < orderedIds.length; i++) {
       await db
         .update(jobTitleStatuses)
@@ -301,6 +381,8 @@ export async function deactivateStatusAction(statusId: string) {
       .from(jobTitleStatuses)
       .where(eq(jobTitleStatuses.id, statusId));
     if (existing?.name === "Hired") throw new Error("HIRED_STATUS_LOCKED");
+    if (!existing) throw new Error("STATUS_NOT_FOUND");
+    await assertActiveJobTitle(existing.jobTitleId);
     await db
       .update(jobTitleStatuses)
       .set({ active: false, updatedAt: new Date() })

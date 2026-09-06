@@ -26,6 +26,7 @@ export type DashboardHire = {
   hiredDate: string;
   withdrawn: boolean;
   withdrawnAt: Date | null;
+  withdrawalDate: string | null;
   withdrawalType: string | null;
   hireCanceledAt: Date | null;
 };
@@ -112,7 +113,7 @@ function holdPeriods(jobTitleId: string, changes: LifecycleChange[], asOf: strin
 }
 
 function isActiveAt(hire: DashboardHire, asOf: string) {
-  const withdrawnDate = jakartaDateFromTimestamp(hire.withdrawnAt);
+  const withdrawnDate = hire.withdrawalDate ?? jakartaDateFromTimestamp(hire.withdrawnAt);
   const canceledDate = jakartaDateFromTimestamp(hire.hireCanceledAt);
   return (
     hire.hiredDate <= asOf &&
@@ -180,7 +181,7 @@ export function buildSlaSnapshot({
     const sla = title && latestAt(slaChanges, title.id, asOf);
     const start = sla?.recruitmentStartDate ?? title?.start;
     const target = sla?.slaWorkingDays ?? title?.target;
-    if (!title || !start || target == null || start > asOf) continue;
+    if (!title || title.deletedAt || !start || target == null || start > asOf) continue;
     const holds = holdPeriods(title.id, lifecycleChanges, asOf);
     if (
       monthKey(hire.hiredDate) === month &&
@@ -188,12 +189,13 @@ export function buildSlaSnapshot({
     )
       within++;
     else if (monthKey(hire.hiredDate) === month) over++;
-    const withdrawnDate = jakartaDateFromTimestamp(hire.withdrawnAt);
+    const withdrawnDate = hire.withdrawalDate ?? jakartaDateFromTimestamp(hire.withdrawnAt);
     if (hire.withdrawalType === "pre_joining" && withdrawnDate && monthKey(withdrawnDate) === month)
       preJoiningWithdrawals++;
   }
 
   for (const title of titles) {
+    if (title.deletedAt) continue;
     const sla = latestAt(slaChanges, title.id, asOf);
     const start = sla?.recruitmentStartDate ?? title.start;
     const target = sla?.slaWorkingDays ?? title.target;

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 
 import { db } from "@/db";
-import { applications, candidates } from "@/db/schema";
+import { applications, candidates, jobTitles } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -71,6 +71,7 @@ export default async function CandidatesPage({
     ? await db
         .select({ candidateId: applications.candidateId })
         .from(applications)
+        .innerJoin(jobTitles, eq(applications.jobTitleId, jobTitles.id))
         .where(
           and(
             inArray(
@@ -78,6 +79,7 @@ export default async function CandidatesPage({
               cands.map((c) => c.candidate.id),
             ),
             eq(applications.withdrawn, false),
+            isNull(jobTitles.deletedAt),
           ),
         )
     : [];

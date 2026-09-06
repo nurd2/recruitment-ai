@@ -1,5 +1,6 @@
 import { db } from "@/db";
-import { processingJobs, resumeDocuments } from "@/db/schema";
+import { jobTitles, processingJobs, resumeDocuments } from "@/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 import { requireAdmin } from "@/lib/authz";
 import { recordAudit } from "@/lib/audit";
 import { sha256 } from "@/lib/hash";
@@ -22,6 +23,14 @@ export async function createResumeUpload(formData: FormData) {
   const file = formData.get("file");
   const rawJobTitleId = formData.get("jobTitleId");
   const jobTitleId = rawJobTitleId && rawJobTitleId !== "" ? String(rawJobTitleId) : null;
+
+  if (jobTitleId) {
+    const [jobTitle] = await db
+      .select({ id: jobTitles.id })
+      .from(jobTitles)
+      .where(and(eq(jobTitles.id, jobTitleId), isNull(jobTitles.deletedAt)));
+    if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
+  }
 
   if (!(file instanceof File) || file.size === 0) throw new Error("FILE_REQUIRED");
   if (!ALLOWED_MIME.has(file.type)) {

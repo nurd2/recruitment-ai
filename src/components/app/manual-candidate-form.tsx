@@ -7,12 +7,23 @@ import { toast } from "sonner";
 import { createManualCandidateAction } from "@/app/actions/applications";
 import { CandidateProfileFields } from "@/components/app/candidate-profile-fields";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { EducationEntry, WorkExperienceEntry } from "@/db/schema";
-import { CANDIDATE_SOURCE_LABELS, RESUME_SOURCES, type CandidateSource } from "@/lib/resume-sources";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  CANDIDATE_SOURCE_LABELS,
+  RESUME_SOURCES,
+  type CandidateSource,
+} from "@/lib/resume-sources";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Match = {
   candidateId: string;
@@ -27,6 +38,7 @@ export function ManualCandidateForm({ jobTitleId }: { jobTitleId: string }) {
   const [education, setEducation] = useState<EducationEntry[]>([]);
   const [workExperience, setWorkExperience] = useState<WorkExperienceEntry[]>([]);
   const [source, setSource] = useState<CandidateSource | "">("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [matches, setMatches] = useState<Match[]>([]);
   const [dedupChoice, setDedupChoice] = useState("create");
   const [loading, setLoading] = useState(false);
@@ -93,7 +105,12 @@ export function ManualCandidateForm({ jobTitleId }: { jobTitleId: string }) {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="dateOfBirth">Date of birth</Label>
-            <Input id="dateOfBirth" name="dateOfBirth" type="date" />
+            <DatePicker
+              id="dateOfBirth"
+              name="dateOfBirth"
+              value={dateOfBirth}
+              onChange={setDateOfBirth}
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="location">Location</Label>
@@ -101,7 +118,10 @@ export function ManualCandidateForm({ jobTitleId }: { jobTitleId: string }) {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="source">Candidate source</Label>
-            <Select value={source} onValueChange={(value) => setSource((value ?? "") as CandidateSource | "")}>
+            <Select
+              value={source}
+              onValueChange={(value) => setSource((value ?? "") as CandidateSource | "")}
+            >
               <SelectTrigger id="source" className="w-full">
                 <SelectValue placeholder="Select source">
                   {source ? CANDIDATE_SOURCE_LABELS[source] : undefined}

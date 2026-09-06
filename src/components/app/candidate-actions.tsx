@@ -15,7 +15,17 @@ import {
   withdrawApplicationAction,
 } from "@/app/actions/applications";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -24,8 +34,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +48,14 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { statusDotClass } from "@/lib/status-colors";
 import { jakartaDate } from "@/lib/sla";
 import { cn } from "@/lib/utils";
@@ -78,7 +96,11 @@ export function CandidateActions({
   const [hiredStatusId, setHiredStatusId] = useState<string | null>(null);
   const [hiredDate, setHiredDate] = useState(initialHiredDate ?? jakartaDate());
   const [withdrawalOpen, setWithdrawalOpen] = useState(false);
+  const [withdrawalDate, setWithdrawalDate] = useState(jakartaDate());
   const [withdrawalType, setWithdrawalType] = useState<"standard" | "pre_joining">("standard");
+  const [cancelHireOpen, setCancelHireOpen] = useState(false);
+  const [cancelHireReason, setCancelHireReason] = useState("");
+  const [cancelHirePending, setCancelHirePending] = useState(false);
 
   async function changeStatus(statusId: string, date?: string) {
     const res = await changeApplicationStatusAction({
@@ -116,18 +138,28 @@ export function CandidateActions({
   }
 
   async function withdraw() {
-    const res = await withdrawApplicationAction({ applicationId, withdrawalType });
-    if (!res.ok) toast.error(res.error);
-    else toast.success("Application withdrawn.");
+    const res = await withdrawApplicationAction({ applicationId, withdrawalDate, withdrawalType });
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    setWithdrawalOpen(false);
+    toast.success("Application withdrawn.");
     router.refresh();
   }
 
   async function cancelHire() {
-    const reason = window.prompt("Why is this hire being canceled?")?.trim();
+    const reason = cancelHireReason.trim();
     if (!reason) return;
+    setCancelHirePending(true);
     const res = await cancelHireAction({ applicationId, reason });
+    setCancelHirePending(false);
     if (!res.ok) toast.error(res.error);
-    else toast.success("Hire canceled and removed from fulfillment.");
+    else {
+      setCancelHireOpen(false);
+      setCancelHireReason("");
+      toast.success("Hire canceled and removed from fulfillment.");
+    }
     router.refresh();
   }
 
@@ -223,7 +255,12 @@ export function CandidateActions({
               </DropdownMenuItem>
             ) : null}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setWithdrawalOpen(true)}>
+            <DropdownMenuItem
+              onClick={() => {
+                setWithdrawalDate(jakartaDate());
+                setWithdrawalOpen(true);
+              }}
+            >
               <UserRound className="size-4" /> Withdraw application
             </DropdownMenuItem>
             {statuses.find((status) => status.id === currentStatusId)?.name === "Hired" ? (
@@ -236,7 +273,7 @@ export function CandidateActions({
                 >
                   <Pencil className="size-4" /> Edit Hired date
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={cancelHire}>
+                <DropdownMenuItem onClick={() => setCancelHireOpen(true)}>
                   <Trash2 className="size-4" /> Cancel hire
                 </DropdownMenuItem>
               </>
@@ -273,12 +310,7 @@ export function CandidateActions({
           </DialogHeader>
           <div className="grid gap-2">
             <Label htmlFor="hired-date">Hired date</Label>
-            <Input
-              id="hired-date"
-              type="date"
-              value={hiredDate}
-              onChange={(event) => setHiredDate(event.target.value)}
-            />
+            <DatePicker id="hired-date" value={hiredDate} onChange={setHiredDate} required />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setHiredStatusId(null)}>
@@ -300,17 +332,32 @@ export function CandidateActions({
           </DialogHeader>
           <div className="grid gap-2">
             <Label htmlFor="withdrawal-type">Withdrawal type</Label>
-            <select
-              id="withdrawal-type"
-              className="h-9 rounded-4xl border border-input bg-input/30 px-3 text-sm"
+            <Select
               value={withdrawalType}
-              onChange={(event) =>
-                setWithdrawalType(event.target.value as "standard" | "pre_joining")
+              onValueChange={(value) =>
+                setWithdrawalType((value ?? "standard") as "standard" | "pre_joining")
               }
             >
-              <option value="standard">Standard withdrawal</option>
-              <option value="pre_joining">Pre-joining withdrawal</option>
-            </select>
+              <SelectTrigger id="withdrawal-type" className="w-full">
+                <SelectValue placeholder="Select withdrawal type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="standard">Standard withdrawal</SelectItem>
+                  <SelectItem value="pre_joining">Pre-joining withdrawal</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="withdrawal-date">Withdrawal date</Label>
+            <DatePicker
+              id="withdrawal-date"
+              value={withdrawalDate}
+              onChange={setWithdrawalDate}
+              max={jakartaDate()}
+              required
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWithdrawalOpen(false)}>
@@ -318,7 +365,6 @@ export function CandidateActions({
             </Button>
             <Button
               onClick={async () => {
-                setWithdrawalOpen(false);
                 await withdraw();
               }}
             >
@@ -328,19 +374,63 @@ export function CandidateActions({
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog
-        open={confirm !== null}
-        onOpenChange={(open) => !open && setConfirm(null)}
-        title={confirm?.title ?? ""}
-        description={confirm?.description}
-        confirmLabel={confirm?.confirmLabel}
-        destructive={confirm?.destructive}
-        onConfirm={async () => {
-          if (!confirm) return;
-          setConfirm(null);
-          await confirm.action();
-        }}
-      />
+      <Dialog open={cancelHireOpen} onOpenChange={setCancelHireOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel hire</DialogTitle>
+            <DialogDescription>
+              This removes the hire from fulfillment. Explain why the hire is being canceled.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label htmlFor="hire-cancellation-reason">Reason</Label>
+            <Textarea
+              id="hire-cancellation-reason"
+              value={cancelHireReason}
+              onChange={(event) => setCancelHireReason(event.target.value)}
+              placeholder="Enter the cancellation reason"
+              maxLength={1000}
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={cancelHirePending}
+              onClick={() => setCancelHireOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button disabled={cancelHirePending || !cancelHireReason.trim()} onClick={cancelHire}>
+              {cancelHirePending ? "Please wait..." : "Cancel hire"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirm?.title ?? ""}</AlertDialogTitle>
+            {confirm?.description ? (
+              <AlertDialogDescription>{confirm.description}</AlertDialogDescription>
+            ) : null}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant={confirm?.destructive ? "destructive" : "default"}
+              onClick={async () => {
+                if (!confirm) return;
+                setConfirm(null);
+                await confirm.action();
+              }}
+            >
+              {confirm?.confirmLabel ?? "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

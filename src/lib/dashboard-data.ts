@@ -86,8 +86,9 @@ export const getPipelineData = cache(async () => {
   const rows = await db
     .select({ statusName: jobTitleStatuses.name, n: count() })
     .from(applications)
+    .innerJoin(jobTitles, eq(applications.jobTitleId, jobTitles.id))
     .leftJoin(jobTitleStatuses, eq(applications.currentStatusId, jobTitleStatuses.id))
-    .where(eq(applications.withdrawn, false))
+    .where(and(eq(applications.withdrawn, false), isNull(jobTitles.deletedAt)))
     .groupBy(jobTitleStatuses.name);
   return aggregatePipelineStatusCounts(rows);
 });
@@ -103,7 +104,7 @@ const getSlaFacts = cache(async () => {
     lifecycleChanges,
     slaChanges,
   ] = await Promise.all([
-    db.select().from(jobTitles),
+    db.select().from(jobTitles).where(isNull(jobTitles.deletedAt)),
     db.select({ date: holidays.date }).from(holidays).where(isNull(holidays.deletedAt)),
     db.select().from(holidayHistory),
     db
@@ -113,6 +114,7 @@ const getSlaFacts = cache(async () => {
         hiredDate: applications.hiredDate,
         withdrawn: applications.withdrawn,
         withdrawnAt: applications.withdrawnAt,
+        withdrawalDate: applications.withdrawalDate,
         withdrawalType: applications.withdrawalType,
         hireCanceledAt: applications.hireCanceledAt,
       })
@@ -133,21 +135,22 @@ const getSlaFacts = cache(async () => {
     lifecycleStatus: title.lifecycleStatus,
     deletedAt: title.deletedAt,
   }));
-  const dashboardHires: DashboardHire[] = hires.flatMap((hire) =>
-    hire.hiredDate
-      ? [
-          {
-            applicationId: hire.applicationId,
-            jobTitleId: hire.jobTitleId,
-            hiredDate: hire.hiredDate,
-            withdrawn: hire.withdrawn,
-            withdrawnAt: hire.withdrawnAt,
-            withdrawalType: hire.withdrawalType,
-            hireCanceledAt: hire.hireCanceledAt,
-          },
-        ]
-      : [],
-  );
+  const activeTitleIds = new Set(titles.map((title) => title.id));
+  const dashboardHires: DashboardHire[] = hires.flatMap((hire) => {
+    if (!hire.hiredDate || !hire.jobTitleId || !activeTitleIds.has(hire.jobTitleId)) return [];
+    return [
+      {
+        applicationId: hire.applicationId,
+        jobTitleId: hire.jobTitleId,
+        hiredDate: hire.hiredDate,
+        withdrawn: hire.withdrawn,
+        withdrawnAt: hire.withdrawnAt,
+        withdrawalDate: hire.withdrawalDate,
+        withdrawalType: hire.withdrawalType,
+        hireCanceledAt: hire.hireCanceledAt,
+      },
+    ];
+  });
 
   return {
     titles: dashboardTitles,
@@ -159,25 +162,31 @@ const getSlaFacts = cache(async () => {
       effectiveFrom: change.effectiveFrom,
       createdAt: change.createdAt,
     })),
-    requirementChanges: requirementChanges.map((change) => ({
-      jobTitleId: change.jobTitleId,
-      openings: change.openings,
-      effectiveFrom: change.effectiveFrom,
-      createdAt: change.createdAt,
-    })),
-    lifecycleChanges: lifecycleChanges.map((change) => ({
-      jobTitleId: change.jobTitleId,
-      status: change.status,
-      effectiveFrom: change.effectiveFrom,
-      createdAt: change.createdAt,
-    })),
-    slaChanges: slaChanges.map((change) => ({
-      jobTitleId: change.jobTitleId,
-      recruitmentStartDate: change.recruitmentStartDate,
-      slaWorkingDays: change.slaWorkingDays,
-      effectiveFrom: change.effectiveFrom,
-      createdAt: change.createdAt,
-    })),
+    requirementChanges: requirementChanges
+      .filter((change) => activeTitleIds.has(change.jobTitleId))
+      .map((change) => ({
+        jobTitleId: change.jobTitleId,
+        openings: change.openings,
+        effectiveFrom: change.effectiveFrom,
+        createdAt: change.createdAt,
+      })),
+    lifecycleChanges: lifecycleChanges
+      .filter((change) => activeTitleIds.has(change.jobTitleId))
+      .map((change) => ({
+        jobTitleId: change.jobTitleId,
+        status: change.status,
+        effectiveFrom: change.effectiveFrom,
+        createdAt: change.createdAt,
+      })),
+    slaChanges: slaChanges
+      .filter((change) => activeTitleIds.has(change.jobTitleId))
+      .map((change) => ({
+        jobTitleId: change.jobTitleId,
+        recruitmentStartDate: change.recruitmentStartDate,
+        slaWorkingDays: change.slaWorkingDays,
+        effectiveFrom: change.effectiveFrom,
+        createdAt: change.createdAt,
+      })),
   };
 });
 

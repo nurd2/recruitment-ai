@@ -10,9 +10,18 @@ import {
   deleteUserAction,
   setUserActiveAction,
 } from "@/app/actions/users";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -185,15 +194,22 @@ export function UserAdmin({ users, currentUserId }: { users: UserRow[]; currentU
         ))}
       </div>
 
-      <ConfirmDialog
-        open={deleting !== null}
-        onOpenChange={(open) => !open && setDeleting(null)}
-        title={`Delete user "${deleting?.name ?? ""}"?`}
-        description="This removes the user and cannot be undone."
-        confirmLabel="Delete user"
-        destructive
-        onConfirm={onDeleteConfirmed}
-      />
+      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete user &quot;{deleting?.name ?? ""}&quot;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the user and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onDeleteConfirmed}>
+              Delete user
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

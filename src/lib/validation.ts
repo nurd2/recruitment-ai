@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { STATUS_COLORS } from "@/lib/status-colors";
 import { JOB_TITLE_LIFECYCLE_STATUSES } from "@/lib/job-title-status";
+import { jakartaDate } from "@/lib/sla";
 
 /* ------------------------------------------------------------------ */
 /* Domain input schemas (form + server action validation)              */
@@ -45,6 +46,12 @@ export const statusInputSchema = z.object({
 });
 
 export const hiredDateSchema = z.string().date();
+export const withdrawalDateSchema = z
+  .string()
+  .date()
+  .refine((value) => value <= jakartaDate(), {
+    message: "Withdrawal date cannot be in the future.",
+  });
 export const withdrawalTypeSchema = z.enum(["standard", "pre_joining"]);
 
 import { RESUME_SOURCES } from "@/lib/resume-sources";

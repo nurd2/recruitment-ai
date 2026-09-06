@@ -8,6 +8,7 @@ import { confirmReviewAction, rematchRecommendationsAction } from "@/app/actions
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -292,12 +293,7 @@ export function ReviewForm({
                   </span>
                 ) : null}
               </Label>
-              <Input
-                id="dateOfBirth"
-                type="date"
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-              />
+              <DatePicker id="dateOfBirth" value={dateOfBirth} onChange={setDateOfBirth} />
               <FieldMetaNote field="dateOfBirth" />
             </div>
             <div className="grid gap-1.5">

@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { mockResult } from "@/lib/ai/mock";
-import { aiRecommendationsSchema, aiValidationSchema } from "@/lib/validation";
+import {
+  aiRecommendationsSchema,
+  aiValidationSchema,
+  withdrawalDateSchema,
+} from "@/lib/validation";
+import { jakartaDate } from "@/lib/sla";
 
 describe("AI output schemas (FR-AI-004)", () => {
   it("accepts the mock validation output", () => {
@@ -44,10 +49,7 @@ describe("AI output schemas (FR-AI-004)", () => {
   });
 
   it("accepts the mock recommendations output and maps job titles", () => {
-    const data = mockResult(
-      "recommend",
-      JSON.stringify({ jobTitles: [{ id: "title-1" }] }),
-    );
+    const data = mockResult("recommend", JSON.stringify({ jobTitles: [{ id: "title-1" }] }));
     const parsed = aiRecommendationsSchema.safeParse(data);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
@@ -58,5 +60,14 @@ describe("AI output schemas (FR-AI-004)", () => {
   it("rejects malformed AI output", () => {
     const parsed = aiValidationSchema.safeParse({ fields: { fullName: 42 } });
     expect(parsed.success).toBe(false);
+  });
+
+  it("rejects a withdrawal date in the future", () => {
+    const tomorrow = new Date(`${jakartaDate()}T00:00:00Z`);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const futureDate = tomorrow.toISOString().slice(0, 10);
+
+    expect(withdrawalDateSchema.safeParse(futureDate).success).toBe(false);
+    expect(withdrawalDateSchema.safeParse(jakartaDate()).success).toBe(true);
   });
 });

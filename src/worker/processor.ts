@@ -21,10 +21,8 @@ import { connection, JOB_ATTEMPTS, type DocumentJob } from "@/worker/queue";
  * All writes are idempotent (upserts keyed by resume_document_id), so retries
  * never create duplicate results, candidates, or applications.
  */
-export async function processDocument(
-  job: DocumentJob,
-  attemptsMade = 1,
-): Promise<void> {
+export async function processDocument(job: DocumentJob, attemptsMade = 1): Promise<void> {
+  const storedJob = await assertProcessingJobAvailable(job.processingJobId);
   const now = new Date();
   await db
     .update(processingJobs)
@@ -57,10 +55,7 @@ export async function processDocument(
   let ocrUsed = false;
   let ocrRuntime: string | null = null;
   if (isScannedText(extraction)) {
-    if (
-      doc.mimeType === "application/pdf" ||
-      doc.mimeType.startsWith("image/")
-    ) {
+    if (doc.mimeType === "application/pdf" || doc.mimeType.startsWith("image/")) {
       const ocr = await runOcr(buffer, doc.mimeType);
       rawText = ocr.text;
       ocrUsed = true;
@@ -83,10 +78,9 @@ export async function processDocument(
   mergeLocalContacts(output, rawText);
 
   const needsReview =
-    ocrUsed ||
-    output.fieldsRequiringReview.length > 0 ||
-    output.conflicts.length > 0;
+    ocrUsed || output.fieldsRequiringReview.length > 0 || output.conflicts.length > 0;
 
+  await assertProcessingJobAvailable(job.processingJobId);
   const [result] = await db
     .insert(processingResults)
     .values({
@@ -125,7 +119,8 @@ export async function processDocument(
     .returning({ id: processingResults.id });
 
   /* ---------- Stage 3: recommendations (general intake only) -------- */
-  if (!job.jobTitleId) {
+  await assertProcessingJobAvailable(job.processingJobId);
+  if (!storedJob.jobTitleId) {
     await db
       .update(processingJobs)
       .set({ stage: "recommend", updatedAt: new Date() })
@@ -136,20 +131,23 @@ export async function processDocument(
       .from(jobTitles)
       .where(and(eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
 
-    const { recommendations: recs, provider: recProvider, model: recModel } =
-      await runAiRecommendations({
-        fields: output.fields,
-        jobTitles: active.map((t) => ({
-          id: t.id,
-          title: t.title,
-          description: t.description ?? "",
-          competencies: t.competencies ?? [],
-          minYearsExperience: t.minYearsExperience,
-          minEducation: t.minEducation ?? "",
-          location: t.location ?? "",
-          workArrangement: t.workArrangement ?? "",
-        })),
-      });
+    const {
+      recommendations: recs,
+      provider: recProvider,
+      model: recModel,
+    } = await runAiRecommendations({
+      fields: output.fields,
+      jobTitles: active.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description ?? "",
+        competencies: t.competencies ?? [],
+        minYearsExperience: t.minYearsExperience,
+        minEducation: t.minEducation ?? "",
+        location: t.location ?? "",
+        workArrangement: t.workArrangement ?? "",
+      })),
+    });
 
     // Replace stale pending recommendations for this resume (idempotent).
     await db
@@ -182,6 +180,7 @@ export async function processDocument(
     }
   }
 
+  await assertProcessingJobAvailable(job.processingJobId);
   await db
     .update(processingJobs)
     .set({
@@ -191,6 +190,22 @@ export async function processDocument(
       updatedAt: new Date(),
     })
     .where(eq(processingJobs.id, job.processingJobId));
+}
+
+async function assertProcessingJobAvailable(processingJobId: string) {
+  const [job] = await db
+    .select({ id: processingJobs.id, jobTitleId: processingJobs.jobTitleId })
+    .from(processingJobs)
+    .where(eq(processingJobs.id, processingJobId));
+  if (!job) throw new Error("PROCESSING_JOB_REMOVED");
+  if (job.jobTitleId) {
+    const [title] = await db
+      .select({ id: jobTitles.id })
+      .from(jobTitles)
+      .where(and(eq(jobTitles.id, job.jobTitleId), isNull(jobTitles.deletedAt)));
+    if (!title) throw new Error("PROCESSING_JOB_REMOVED");
+  }
+  return job;
 }
 
 export function startProcessor(): Worker<DocumentJob> {

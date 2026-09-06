@@ -338,9 +338,7 @@ export const applications = pgTable(
     candidateId: uuid("candidate_id")
       .notNull()
       .references(() => candidates.id, { onDelete: "cascade" }),
-    jobTitleId: uuid("job_title_id")
-      .notNull()
-      .references(() => jobTitles.id, { onDelete: "cascade" }),
+    jobTitleId: uuid("job_title_id").references(() => jobTitles.id, { onDelete: "set null" }),
     currentStatusId: uuid("current_status_id").references(() => jobTitleStatuses.id),
     recruitmentCycle: integer("recruitment_cycle").notNull().default(1),
     hiredDate: date("hired_date"),
@@ -351,6 +349,7 @@ export const applications = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     withdrawn: boolean("withdrawn").notNull().default(false),
     withdrawnAt: timestamp("withdrawn_at"),
+    withdrawalDate: date("withdrawal_date"),
     withdrawalType: text("withdrawal_type"),
   },
   (t) => [

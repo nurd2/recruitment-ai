@@ -5,8 +5,17 @@ import { useRouter } from "@bprogress/next/app";
 import { toast } from "sonner";
 
 import { deleteCandidateAction } from "@/app/actions/applications";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export function DeleteCandidateButton({ candidateId }: { candidateId: string }) {
   const router = useRouter();
@@ -26,23 +35,26 @@ export function DeleteCandidateButton({ candidateId }: { candidateId: string }) 
 
   return (
     <>
-      <Button
-        type="button"
-        variant="destructive"
-        size="sm"
-        onClick={() => setOpen(true)}
-      >
+      <Button type="button" variant="destructive" size="sm" onClick={() => setOpen(true)}>
         Delete candidate
       </Button>
-      <ConfirmDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Delete candidate?"
-        description="This soft-deletes the candidate, their applications, and resume document. The action is recorded in the audit log."
-        confirmLabel="Delete"
-        destructive
-        onConfirm={onConfirm}
-      />
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete candidate?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This soft-deletes the candidate, their applications, and resume document. The action
+              is recorded in the audit log.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onConfirm}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -12,7 +12,16 @@ import {
 } from "@/app/actions/ai";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
@@ -38,11 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AI_PROVIDERS,
-  DEFAULT_MODELS,
-  PRESET_BASE_URLS,
-} from "@/lib/ai/providers-meta";
+import { AI_PROVIDERS, DEFAULT_MODELS, PRESET_BASE_URLS } from "@/lib/ai/providers-meta";
 import type { AiProviderName } from "@/lib/ai/providers-meta";
 import { delayDialogClose } from "@/lib/utils";
 import { toast } from "sonner";
@@ -155,10 +160,7 @@ function ConfigForm({
       <div className="grid grid-cols-1 items-start gap-x-6 gap-y-4 sm:grid-cols-2">
         <div className="grid min-w-0 gap-1.5">
           <Label htmlFor={`provider-${uid}`}>Provider</Label>
-          <Select
-            value={provider}
-            onValueChange={(v) => setProvider(v as AiProviderName)}
-          >
+          <Select value={provider} onValueChange={(v) => setProvider(v as AiProviderName)}>
             <SelectTrigger id={`provider-${uid}`} className="w-full">
               <SelectValue>
                 {(value) => {
@@ -227,8 +229,7 @@ function ConfigForm({
               className="bg-input/20 text-muted-foreground"
             />
             <p className="text-xs text-muted-foreground">
-              Preset for {providerLabel(provider)}. Use the Custom provider for
-              other endpoints.
+              Preset for {providerLabel(provider)}. Use the Custom provider for other endpoints.
             </p>
           </div>
         )}
@@ -265,11 +266,7 @@ function ConfigForm({
           <span>Enabled</span>
         </label>
         <label htmlFor={`default-${uid}`} className="flex items-center gap-2">
-          <Checkbox
-            id={`default-${uid}`}
-            name="isDefault"
-            defaultChecked={initial?.isDefault}
-          />
+          <Checkbox id={`default-${uid}`} name="isDefault" defaultChecked={initial?.isDefault} />
           <span>Default provider</span>
         </label>
         <label htmlFor={`fallback-${uid}`} className="flex items-center gap-2">
@@ -330,11 +327,7 @@ export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
     router.refresh();
   }
 
-  async function updateFlags(input: {
-    id: string;
-    isDefault?: boolean;
-    enabled?: boolean;
-  }) {
+  async function updateFlags(input: { id: string; isDefault?: boolean; enabled?: boolean }) {
     const res = await updateAiConfigFlagsAction(input);
     if (!res.ok) {
       toast.error(res.error);
@@ -350,9 +343,9 @@ export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">AI configuration</h1>
           <p className="mt-1 max-w-4xl text-sm text-muted-foreground">
-            Admin only. Choose OpenAI, DeepSeek, Gemini, Anthropic, or a custom
-            OpenAI-compatible endpoint. API keys are AES-256-GCM encrypted at
-            rest and never stored or displayed in plaintext.
+            Admin only. Choose OpenAI, DeepSeek, Gemini, Anthropic, or a custom OpenAI-compatible
+            endpoint. API keys are AES-256-GCM encrypted at rest and never stored or displayed in
+            plaintext.
           </p>
         </div>
         <Button type="button" onClick={() => setAddProviderOpen(true)}>
@@ -374,19 +367,13 @@ export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Badge variant="secondary">{providerLabel(c.provider)}</Badge>
                     {c.isDefault ? <Badge>default</Badge> : null}
-                    {!c.enabled ? (
-                      <Badge variant="destructive">inactive</Badge>
-                    ) : null}
+                    {!c.enabled ? <Badge variant="destructive">inactive</Badge> : null}
                   </div>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`${c.name} actions`}
-                      >
+                      <Button variant="ghost" size="icon-sm" aria-label={`${c.name} actions`}>
                         <MoreHorizontal className="size-4" />
                       </Button>
                     }
@@ -448,9 +435,7 @@ export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>Edit provider</DialogTitle>
-            <DialogDescription>
-              Update the provider settings and credentials.
-            </DialogDescription>
+            <DialogDescription>Update the provider settings and credentials.</DialogDescription>
           </DialogHeader>
           {editingConfig ? (
             <ConfigForm
@@ -463,15 +448,27 @@ export function AiAdmin({ configs }: { configs: AiConfigRow[] }) {
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog
+      <AlertDialog
         open={confirmDelete !== null}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
-        title={`Delete AI provider "${confirmDelete?.name ?? ""}"?`}
-        description="This removes the provider configuration. Jobs already processed are unaffected."
-        confirmLabel="Delete"
-        destructive
-        onConfirm={onDeleteConfirmed}
-      />
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete AI provider &quot;{confirmDelete?.name ?? ""}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the provider configuration. Jobs already processed are unaffected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={onDeleteConfirmed}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

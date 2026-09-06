@@ -108,13 +108,62 @@ export const jobTitles = pgTable("job_title", {
   workType: text("work_type"),
   workArrangement: text("work_arrangement"),
   language: text("language"),
-  lifecycleStatus: text("lifecycle_status").$type<JobTitleLifecycleStatus>().notNull().default("active"),
+  lifecycleStatus: text("lifecycle_status")
+    .$type<JobTitleLifecycleStatus>()
+    .notNull()
+    .default("active"),
   active: boolean("active").notNull().default(true),
   deletedAt: timestamp("deleted_at"),
   createdBy: text("created_by").references(() => user.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const jobTitleHeadcountHistory = pgTable(
+  "job_title_headcount_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobTitleId: uuid("job_title_id")
+      .notNull()
+      .references(() => jobTitles.id, { onDelete: "cascade" }),
+    openings: integer("openings").notNull(),
+    effectiveFrom: date("effective_from").notNull(),
+    changedBy: text("changed_by").references(() => user.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("job_title_headcount_history_job_idx").on(t.jobTitleId, t.effectiveFrom)],
+);
+
+export const jobTitleLifecycleHistory = pgTable(
+  "job_title_lifecycle_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobTitleId: uuid("job_title_id")
+      .notNull()
+      .references(() => jobTitles.id, { onDelete: "cascade" }),
+    status: text("status").$type<JobTitleLifecycleStatus>().notNull(),
+    effectiveFrom: date("effective_from").notNull(),
+    changedBy: text("changed_by").references(() => user.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("job_title_lifecycle_history_job_idx").on(t.jobTitleId, t.effectiveFrom)],
+);
+
+export const jobTitleSlaHistory = pgTable(
+  "job_title_sla_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobTitleId: uuid("job_title_id")
+      .notNull()
+      .references(() => jobTitles.id, { onDelete: "cascade" }),
+    recruitmentStartDate: date("recruitment_start_date").notNull(),
+    slaWorkingDays: integer("sla_working_days").notNull(),
+    effectiveFrom: date("effective_from").notNull(),
+    changedBy: text("changed_by").references(() => user.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("job_title_sla_history_job_idx").on(t.jobTitleId, t.effectiveFrom)],
+);
 
 export const slaPolicies = pgTable("sla_policy", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -130,9 +179,26 @@ export const holidays = pgTable("holiday", {
   name: text("name").notNull(),
   type: text("type").notNull(), // national_holiday | collective_leave
   source: text("source").notNull().default("manual"),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const holidayHistory = pgTable(
+  "holiday_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    holidayId: uuid("holiday_id")
+      .notNull()
+      .references(() => holidays.id, { onDelete: "cascade" }),
+    holidayDate: date("holiday_date").notNull(),
+    active: boolean("active").notNull(),
+    effectiveFrom: date("effective_from").notNull(),
+    changedBy: text("changed_by").references(() => user.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("holiday_history_date_idx").on(t.holidayDate, t.effectiveFrom)],
+);
 
 export const jobTitleStatuses = pgTable(
   "job_title_status",
@@ -276,14 +342,23 @@ export const applications = pgTable(
       .notNull()
       .references(() => jobTitles.id, { onDelete: "cascade" }),
     currentStatusId: uuid("current_status_id").references(() => jobTitleStatuses.id),
+    recruitmentCycle: integer("recruitment_cycle").notNull().default(1),
+    hiredDate: date("hired_date"),
+    hireCanceledAt: timestamp("hire_canceled_at"),
+    hireCancellationReason: text("hire_cancellation_reason"),
     createdBy: text("created_by").references(() => user.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     withdrawn: boolean("withdrawn").notNull().default(false),
     withdrawnAt: timestamp("withdrawn_at"),
+    withdrawalType: text("withdrawal_type"),
   },
   (t) => [
-    uniqueIndex("application_candidate_job_unique").on(t.candidateId, t.jobTitleId),
+    uniqueIndex("application_candidate_job_cycle_unique").on(
+      t.candidateId,
+      t.jobTitleId,
+      t.recruitmentCycle,
+    ),
     index("application_job_status_idx").on(t.jobTitleId, t.currentStatusId),
   ],
 );
@@ -442,6 +517,30 @@ export const accountRelations = relations(account, ({ one }) => ({
 export const jobTitlesRelations = relations(jobTitles, ({ many }) => ({
   statuses: many(jobTitleStatuses),
   applications: many(applications),
+  headcountHistory: many(jobTitleHeadcountHistory),
+  lifecycleHistory: many(jobTitleLifecycleHistory),
+  slaHistory: many(jobTitleSlaHistory),
+}));
+
+export const jobTitleHeadcountHistoryRelations = relations(jobTitleHeadcountHistory, ({ one }) => ({
+  jobTitle: one(jobTitles, {
+    fields: [jobTitleHeadcountHistory.jobTitleId],
+    references: [jobTitles.id],
+  }),
+}));
+
+export const jobTitleLifecycleHistoryRelations = relations(jobTitleLifecycleHistory, ({ one }) => ({
+  jobTitle: one(jobTitles, {
+    fields: [jobTitleLifecycleHistory.jobTitleId],
+    references: [jobTitles.id],
+  }),
+}));
+
+export const jobTitleSlaHistoryRelations = relations(jobTitleSlaHistory, ({ one }) => ({
+  jobTitle: one(jobTitles, {
+    fields: [jobTitleSlaHistory.jobTitleId],
+    references: [jobTitles.id],
+  }),
 }));
 
 export const jobTitleStatusesRelations = relations(jobTitleStatuses, ({ one }) => ({

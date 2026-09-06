@@ -1,0 +1,1 @@
+ALTER TABLE "holiday" ADD COLUMN "deleted_at" timestamp;

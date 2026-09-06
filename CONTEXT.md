@@ -9,30 +9,48 @@ A person profile built from one or more Resume Documents, or entered directly th
 _Avoid_: Applicant, prospect, contact
 
 **Application**:
-The relationship between one Candidate and one Job Title, carrying its own current status and status history.
+The relationship between one Candidate and one Job Title for one recruitment cycle, carrying its own current status, status history, and (when applicable) a Hired fact.
 _Avoid_: Application record (as in a job application form)
 
+**Hired Date**:
+The business date on which an Application was actually hired. It is entered by HR when the Application moves to Hired and is distinct from the timestamp when the status was recorded.
+
+**Hire Fact**:
+A historical Hired Date attached to an Application. Moving the Application away from Hired does not erase the fact; an explicit hire cancellation is required to exclude it from SLA history.
+
+**Recruitment Cycle**:
+One attempt to recruit a Candidate for a Job Title. A rehire after withdrawal starts a new cycle rather than reactivating the prior cycle.
+
 **Job Title**:
- A hiring need with criteria (description, competencies, minimum experience/education, location, work type), a grade, a recruitment start date, and its own ordered status pipeline.
+A hiring need with criteria (description, competencies, minimum experience/education, location, work type), a grade, a recruitment start date, and its own ordered status pipeline.
 _Avoid_: Role, position
 
 **Grade**:
- The organizational hiring level assigned to a Job Title, such as staff or manager. A Grade has an SLA Policy.
+The organizational hiring level assigned to a Job Title, such as staff or manager. A Grade has an SLA Policy.
 
 **SLA Policy**:
- The working-day target associated with a Grade. It defines how long a recruitment should take.
+The working-day target associated with a Grade. It defines how long a recruitment should take.
 
 **Working Day**:
- A Monday-Friday calendar day that is not listed as a national holiday or collective leave.
+A Monday-Friday calendar day that is not listed as a national holiday or collective leave. For SLA elapsed time, Recruitment Start Date is day zero and hold periods are excluded.
 
 **Recruitment Start Date**:
- The date from which a Job Title's recruitment SLA begins. Existing Job Titles use their creation date.
+The date from which a Job Title's recruitment SLA begins. Existing Job Titles use their creation date.
 
 **Holiday Calendar**:
- The shared Indonesian calendar of national holidays and collective leave excluded from Working Day calculations.
+The shared Indonesian calendar of national holidays and collective leave excluded from Working Day calculations.
 
 **Application Status**:
 A named stage in a Job Title's pipeline (for example, Screening) that belongs to the Application, never to the global Candidate profile.
+
+**Pre-Joining Withdrawal**:
+An explicit withdrawal outcome for an Application after a Hired fact but before joining. It reduces currently fulfilled headcount, while the historical Hired fact remains in SLA results.
+
+**Required Headcount**:
+The number of people a Job Title needs. Changes are effective-dated so historical dashboard snapshots use the requirement known at that cutoff.
+
+**Job Title Lifecycle**:
+The operational state of a Job Title: Active, On Hold, or Fulfilled. Hold periods stop the SLA clock; lifecycle history is effective-dated for historical reporting.
 
 **Resume Document**:
 The original uploaded file (PDF or DOCX), stored privately, that produces a Processing Result.

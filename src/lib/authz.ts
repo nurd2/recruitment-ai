@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { forbidden } from "next/navigation";
+import { cache } from "react";
 
 import { auth } from "@/lib/auth";
 
@@ -17,13 +18,13 @@ export type SessionUser = {
  * Every server action / route handler that touches sensitive data MUST call
  * one of these guards. The UI is never the only layer of authorization.
  */
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return null;
   const user = session.user as unknown as SessionUser;
   if (user.banned) return null;
   return user;
-}
+});
 
 export async function requireUser(): Promise<SessionUser> {
   const user = await getSessionUser();

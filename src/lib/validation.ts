@@ -44,6 +44,9 @@ export const statusInputSchema = z.object({
   name: z.string().trim().min(1).max(100),
 });
 
+export const hiredDateSchema = z.string().date();
+export const withdrawalTypeSchema = z.enum(["standard", "pre_joining"]);
+
 import { RESUME_SOURCES } from "@/lib/resume-sources";
 export const statusColorSchema = z.object({
   color: z.enum(STATUS_COLORS),

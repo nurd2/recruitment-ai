@@ -239,6 +239,7 @@ export default async function JobTitleDetailPage({
                           jobTitleId={id}
                           resumeDocumentId={candidate.primaryResumeDocumentId}
                           currentStatusId={application.currentStatusId}
+                          hiredDate={application.hiredDate}
                           statuses={statuses}
                           otherJobTitles={otherJobTitles}
                           isAdmin={user?.role === "admin"}

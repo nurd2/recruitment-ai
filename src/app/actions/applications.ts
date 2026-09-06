@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, count, eq, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -8,6 +8,7 @@ import {
   applications,
   applicationStatusHistory,
   candidates,
+  jobTitleLifecycleHistory,
   jobTitles,
   jobTitleStatuses,
   resumeDocuments,
@@ -18,16 +19,19 @@ import { recordAudit } from "@/lib/audit";
 import { findDedupMatches } from "@/lib/dedup";
 import { candidateEditSchema } from "@/lib/validation";
 import { runAiRecommendations } from "@/lib/ai/recommend";
+import { jakartaDate } from "@/lib/sla";
+import { hiredDateSchema, withdrawalTypeSchema } from "@/lib/validation";
 
 const statusChangeSchema = z.object({
   applicationId: z.string().uuid(),
   toStatusId: z.string().uuid(),
+  hiredDate: hiredDateSchema.optional(),
 });
 
 export async function changeApplicationStatusAction(input: z.infer<typeof statusChangeSchema>) {
   return runAction(async () => {
     const actor = await requireAdmin();
-    const { applicationId, toStatusId } = statusChangeSchema.parse(input);
+    const { applicationId, toStatusId, hiredDate } = statusChangeSchema.parse(input);
 
     const [app] = await db.select().from(applications).where(eq(applications.id, applicationId));
     if (!app || app.withdrawn) throw new Error("APPLICATION_NOT_FOUND");
@@ -44,9 +48,27 @@ export async function changeApplicationStatusAction(input: z.infer<typeof status
       );
     if (!status) throw new Error("INVALID_STATUS");
 
+    if (status.name === "Hired") {
+      const effectiveHiredDate = hiredDate ?? app.hiredDate ?? jakartaDate();
+      if (app.hireCanceledAt) throw new Error("HIRE_CANCELED");
+      const start = (
+        await db
+          .select({ recruitmentStartDate: jobTitles.recruitmentStartDate })
+          .from(jobTitles)
+          .where(eq(jobTitles.id, app.jobTitleId))
+      )[0]?.recruitmentStartDate;
+      if (start && effectiveHiredDate < start) throw new Error("HIRED_DATE_BEFORE_START");
+      if (effectiveHiredDate > jakartaDate()) throw new Error("HIRED_DATE_IN_FUTURE");
+    }
+
     await db
       .update(applications)
-      .set({ currentStatusId: toStatusId, updatedAt: new Date() })
+      .set({
+        currentStatusId: toStatusId,
+        hiredDate:
+          status.name === "Hired" ? (hiredDate ?? app.hiredDate ?? jakartaDate()) : app.hiredDate,
+        updatedAt: new Date(),
+      })
       .where(eq(applications.id, applicationId));
 
     if (status.name === "Hired") {
@@ -62,6 +84,7 @@ export async function changeApplicationStatusAction(input: z.infer<typeof status
           and(
             eq(applications.jobTitleId, app.jobTitleId),
             eq(applications.withdrawn, false),
+            isNull(applications.hireCanceledAt),
             eq(jobTitleStatuses.name, "Hired"),
           ),
         );
@@ -70,6 +93,12 @@ export async function changeApplicationStatusAction(input: z.infer<typeof status
           .update(jobTitles)
           .set({ lifecycleStatus: "fulfilled", active: false, updatedAt: new Date() })
           .where(eq(jobTitles.id, app.jobTitleId));
+        await db.insert(jobTitleLifecycleHistory).values({
+          jobTitleId: app.jobTitleId,
+          status: "fulfilled",
+          effectiveFrom: jakartaDate(),
+          changedBy: actor.id,
+        });
       }
     }
 
@@ -92,6 +121,48 @@ export async function changeApplicationStatusAction(input: z.infer<typeof status
   });
 }
 
+export async function updateHiredDateAction(input: { applicationId: string; hiredDate: string }) {
+  return runAction(async () => {
+    const actor = await requireAdmin();
+    const applicationId = z.string().uuid().parse(input.applicationId);
+    const hiredDate = hiredDateSchema.parse(input.hiredDate);
+    const [application] = await db
+      .select()
+      .from(applications)
+      .where(eq(applications.id, applicationId));
+    if (!application?.hiredDate) throw new Error("HIRE_NOT_FOUND");
+    if (application.withdrawn || application.hireCanceledAt) throw new Error("HIRE_NOT_ACTIVE");
+    const [currentStatus] = application.currentStatusId
+      ? await db
+          .select({ name: jobTitleStatuses.name })
+          .from(jobTitleStatuses)
+          .where(eq(jobTitleStatuses.id, application.currentStatusId))
+      : [];
+    if (currentStatus?.name !== "Hired") throw new Error("HIRE_NOT_ACTIVE");
+    const [jobTitle] = await db
+      .select({ recruitmentStartDate: jobTitles.recruitmentStartDate })
+      .from(jobTitles)
+      .where(eq(jobTitles.id, application.jobTitleId));
+    if (jobTitle?.recruitmentStartDate && hiredDate < jobTitle.recruitmentStartDate) {
+      throw new Error("HIRED_DATE_BEFORE_START");
+    }
+    if (hiredDate > jakartaDate()) throw new Error("HIRED_DATE_IN_FUTURE");
+    await db
+      .update(applications)
+      .set({ hiredDate, updatedAt: new Date() })
+      .where(eq(applications.id, applicationId));
+    await recordAudit({
+      actorId: actor.id,
+      action: "application.update_hired_date",
+      entityType: "application",
+      entityId: applicationId,
+      before: { hiredDate: application.hiredDate },
+      after: { hiredDate },
+    });
+    return { applicationId, hiredDate };
+  });
+}
+
 const moveSchema = z.object({
   applicationId: z.string().uuid(),
   toJobTitleId: z.string().uuid(),
@@ -100,9 +171,8 @@ const moveSchema = z.object({
 /**
  * Move an application to a different job title (e.g. Fullstack → Frontend).
  * Statuses are per-job-title, so the application is reset to the target's first
- * active status and the change is recorded in history. A withdrawn application
- * already at the target is removed to free the (candidateId, jobTitleId) unique
- * slot; an active one blocks the move.
+ * active status and the change is recorded in history. A prior withdrawn cycle
+ * remains intact; moving creates the next cycle at the target when needed.
  */
 export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
   return runAction(async () => {
@@ -112,11 +182,18 @@ export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
     const [app] = await db.select().from(applications).where(eq(applications.id, applicationId));
     if (!app || app.withdrawn) throw new Error("APPLICATION_NOT_FOUND");
     if (app.jobTitleId === toJobTitleId) throw new Error("SAME_JOB_TITLE");
+    if (app.hiredDate) throw new Error("HIRED_APPLICATION_CANNOT_MOVE");
 
     const [jobTitle] = await db
       .select({ id: jobTitles.id })
       .from(jobTitles)
-      .where(and(eq(jobTitles.id, toJobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
+      .where(
+        and(
+          eq(jobTitles.id, toJobTitleId),
+          eq(jobTitles.active, true),
+          isNull(jobTitles.deletedAt),
+        ),
+      );
     if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
 
     const [status] = await db
@@ -129,7 +206,11 @@ export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
 
     // Respect the (candidateId, jobTitleId) unique index.
     const [existing] = await db
-      .select({ id: applications.id, withdrawn: applications.withdrawn })
+      .select({
+        id: applications.id,
+        recruitmentCycle: applications.recruitmentCycle,
+        withdrawn: applications.withdrawn,
+      })
       .from(applications)
       .where(
         and(
@@ -139,14 +220,13 @@ export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
       );
     if (existing && existing.id !== applicationId) {
       if (!existing.withdrawn) throw new Error("ALREADY_APPLIED");
-      // Withdrawn duplicate at target — remove it (history cascades) to free the slot.
-      await db.delete(applications).where(eq(applications.id, existing.id));
     }
 
     await db
       .update(applications)
       .set({
         jobTitleId: toJobTitleId,
+        recruitmentCycle: existing ? existing.recruitmentCycle + 1 : 1,
         currentStatusId: status.id,
         updatedAt: new Date(),
       })
@@ -171,20 +251,111 @@ export async function moveApplicationAction(input: z.infer<typeof moveSchema>) {
   });
 }
 
-export async function withdrawApplicationAction(applicationId: string) {
+const withdrawalSchema = z.object({
+  applicationId: z.string().uuid(),
+  withdrawalType: withdrawalTypeSchema,
+});
+
+export async function withdrawApplicationAction(input: z.infer<typeof withdrawalSchema>) {
   return runAction(async () => {
     const actor = await requireAdmin();
+    const { applicationId, withdrawalType } = withdrawalSchema.parse(input);
+    const [application] = await db
+      .select({ hiredDate: applications.hiredDate, jobTitleId: applications.jobTitleId })
+      .from(applications)
+      .where(eq(applications.id, applicationId));
+    await reopenJobTitleIfNeeded(application.jobTitleId, actor.id);
+    if (!application) throw new Error("APPLICATION_NOT_FOUND");
+    if (withdrawalType === "pre_joining" && !application.hiredDate) {
+      throw new Error("PRE_JOINING_WITHDRAWAL_REQUIRES_HIRE");
+    }
     await db
       .update(applications)
-      .set({ withdrawn: true, withdrawnAt: new Date(), updatedAt: new Date() })
+      .set({
+        withdrawn: true,
+        withdrawnAt: new Date(),
+        withdrawalType,
+        updatedAt: new Date(),
+      })
       .where(eq(applications.id, applicationId));
     await recordAudit({
       actorId: actor.id,
-      action: "application.withdraw",
+      action:
+        withdrawalType === "pre_joining"
+          ? "application.pre_joining_withdrawal"
+          : "application.withdraw",
       entityType: "application",
       entityId: applicationId,
     });
     return { applicationId };
+  });
+}
+
+const cancelHireSchema = z.object({
+  applicationId: z.string().uuid(),
+  reason: z.string().trim().min(1).max(1000),
+});
+
+export async function cancelHireAction(input: z.infer<typeof cancelHireSchema>) {
+  return runAction(async () => {
+    const actor = await requireAdmin();
+    const { applicationId, reason } = cancelHireSchema.parse(input);
+    const [application] = await db
+      .select()
+      .from(applications)
+      .where(eq(applications.id, applicationId));
+    if (!application?.hiredDate) throw new Error("HIRE_NOT_FOUND");
+    await db
+      .update(applications)
+      .set({
+        hireCanceledAt: new Date(),
+        hireCancellationReason: reason,
+        withdrawn: true,
+        withdrawnAt: new Date(),
+        withdrawalType: "standard",
+        updatedAt: new Date(),
+      })
+      .where(eq(applications.id, applicationId));
+    await reopenJobTitleIfNeeded(application.jobTitleId, actor.id);
+    await recordAudit({
+      actorId: actor.id,
+      action: "application.cancel_hire",
+      entityType: "application",
+      entityId: applicationId,
+      after: { reason },
+    });
+    return { applicationId };
+  });
+}
+
+async function reopenJobTitleIfNeeded(jobTitleId: string, actorId: string) {
+  const [jobTitle] = await db
+    .select({ openings: jobTitles.openings, lifecycleStatus: jobTitles.lifecycleStatus })
+    .from(jobTitles)
+    .where(eq(jobTitles.id, jobTitleId));
+  if (!jobTitle || jobTitle.lifecycleStatus !== "fulfilled") return;
+  const [hired] = await db
+    .select({ n: count() })
+    .from(applications)
+    .innerJoin(jobTitleStatuses, eq(applications.currentStatusId, jobTitleStatuses.id))
+    .where(
+      and(
+        eq(applications.jobTitleId, jobTitleId),
+        eq(applications.withdrawn, false),
+        isNull(applications.hireCanceledAt),
+        eq(jobTitleStatuses.name, "Hired"),
+      ),
+    );
+  if (Number(hired.n) >= jobTitle.openings) return;
+  await db
+    .update(jobTitles)
+    .set({ lifecycleStatus: "active", active: true, updatedAt: new Date() })
+    .where(eq(jobTitles.id, jobTitleId));
+  await db.insert(jobTitleLifecycleHistory).values({
+    jobTitleId,
+    status: "active",
+    effectiveFrom: jakartaDate(),
+    changedBy: actorId,
   });
 }
 
@@ -202,7 +373,12 @@ export async function deleteCandidateAction(candidateId: string) {
       .where(eq(candidates.id, candidateId));
     await db
       .update(applications)
-      .set({ withdrawn: true, withdrawnAt: new Date(), updatedAt: new Date() })
+      .set({
+        withdrawn: true,
+        withdrawnAt: new Date(),
+        withdrawalType: "standard",
+        updatedAt: new Date(),
+      })
       .where(eq(applications.candidateId, candidateId));
     if (candidate.primaryResumeDocumentId) {
       await db
@@ -252,7 +428,13 @@ export async function createManualCandidateAction(input: z.infer<typeof manualCa
       const [jobTitle] = await tx
         .select({ id: jobTitles.id })
         .from(jobTitles)
-        .where(and(eq(jobTitles.id, parsed.jobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
+        .where(
+          and(
+            eq(jobTitles.id, parsed.jobTitleId),
+            eq(jobTitles.active, true),
+            isNull(jobTitles.deletedAt),
+          ),
+        );
       if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
 
       const [status] = await tx
@@ -299,24 +481,47 @@ export async function createManualCandidateAction(input: z.infer<typeof manualCa
         if (!existing || existing.deletedAt) throw new Error("CANDIDATE_NOT_FOUND");
       }
 
-      const [app] = await tx
-        .insert(applications)
-        .values({
-          candidateId,
-          jobTitleId: parsed.jobTitleId,
-          currentStatusId: status.id,
-          createdBy: actor.id,
+      const [existing] = await tx
+        .select({
+          id: applications.id,
+          recruitmentCycle: applications.recruitmentCycle,
+          withdrawn: applications.withdrawn,
         })
-        .onConflictDoUpdate({
-          target: [applications.candidateId, applications.jobTitleId],
-          set: {
-            withdrawn: false,
-            withdrawnAt: null,
-            currentStatusId: status.id,
-            updatedAt: new Date(),
-          },
-        })
-        .returning({ id: applications.id });
+        .from(applications)
+        .where(
+          and(
+            eq(applications.candidateId, candidateId),
+            eq(applications.jobTitleId, parsed.jobTitleId),
+          ),
+        )
+        .orderBy(desc(applications.recruitmentCycle))
+        .limit(1);
+      const [app] = existing?.withdrawn
+        ? await tx
+            .insert(applications)
+            .values({
+              candidateId,
+              jobTitleId: parsed.jobTitleId,
+              recruitmentCycle: existing.recruitmentCycle + 1,
+              currentStatusId: status.id,
+              createdBy: actor.id,
+            })
+            .returning({ id: applications.id })
+        : existing
+          ? await tx
+              .update(applications)
+              .set({ currentStatusId: status.id, updatedAt: new Date() })
+              .where(eq(applications.id, existing.id))
+              .returning({ id: applications.id })
+          : await tx
+              .insert(applications)
+              .values({
+                candidateId,
+                jobTitleId: parsed.jobTitleId,
+                currentStatusId: status.id,
+                createdBy: actor.id,
+              })
+              .returning({ id: applications.id });
 
       await tx.insert(applicationStatusHistory).values({
         applicationId: app.id,
@@ -365,7 +570,9 @@ export async function assignCandidateToJobTitleAction(input: z.infer<typeof assi
     const [jobTitle] = await db
       .select({ id: jobTitles.id })
       .from(jobTitles)
-      .where(and(eq(jobTitles.id, jobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
+      .where(
+        and(eq(jobTitles.id, jobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)),
+      );
     if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
 
     const [status] = await db
@@ -376,24 +583,44 @@ export async function assignCandidateToJobTitleAction(input: z.infer<typeof assi
       .limit(1);
     if (!status) throw new Error("NO_ACTIVE_STATUS");
 
-    const [app] = await db
-      .insert(applications)
-      .values({
-        candidateId,
-        jobTitleId,
-        currentStatusId: status.id,
-        createdBy: actor.id,
+    const [existing] = await db
+      .select({
+        id: applications.id,
+        recruitmentCycle: applications.recruitmentCycle,
+        withdrawn: applications.withdrawn,
       })
-      .onConflictDoUpdate({
-        target: [applications.candidateId, applications.jobTitleId],
-        set: {
-          withdrawn: false,
-          withdrawnAt: null,
-          currentStatusId: status.id,
-          updatedAt: new Date(),
-        },
-      })
-      .returning({ id: applications.id });
+      .from(applications)
+      .where(
+        and(eq(applications.candidateId, candidateId), eq(applications.jobTitleId, jobTitleId)),
+      )
+      .orderBy(desc(applications.recruitmentCycle))
+      .limit(1);
+    const [app] = existing?.withdrawn
+      ? await db
+          .insert(applications)
+          .values({
+            candidateId,
+            jobTitleId,
+            recruitmentCycle: existing.recruitmentCycle + 1,
+            currentStatusId: status.id,
+            createdBy: actor.id,
+          })
+          .returning({ id: applications.id })
+      : existing
+        ? await db
+            .update(applications)
+            .set({ currentStatusId: status.id, updatedAt: new Date() })
+            .where(eq(applications.id, existing.id))
+            .returning({ id: applications.id })
+        : await db
+            .insert(applications)
+            .values({
+              candidateId,
+              jobTitleId,
+              currentStatusId: status.id,
+              createdBy: actor.id,
+            })
+            .returning({ id: applications.id });
 
     await db.insert(applicationStatusHistory).values({
       applicationId: app.id,

@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
@@ -149,7 +149,13 @@ export async function confirmReviewAction(input: z.infer<typeof confirmReviewSch
       const [jobTitle] = await db
         .select({ id: jobTitles.id })
         .from(jobTitles)
-        .where(and(eq(jobTitles.id, parsed.jobTitleId), eq(jobTitles.active, true), isNull(jobTitles.deletedAt)));
+        .where(
+          and(
+            eq(jobTitles.id, parsed.jobTitleId),
+            eq(jobTitles.active, true),
+            isNull(jobTitles.deletedAt),
+          ),
+        );
       if (!jobTitle) throw new Error("JOB_TITLE_NOT_FOUND");
     }
 
@@ -215,24 +221,47 @@ export async function confirmReviewAction(input: z.infer<typeof confirmReviewSch
         .limit(1);
       if (!status) throw new Error("NO_ACTIVE_STATUS");
 
-      const [app] = await db
-        .insert(applications)
-        .values({
-          candidateId,
-          jobTitleId: parsed.jobTitleId,
-          currentStatusId: status.id,
-          createdBy: actor.id,
+      const [existing] = await db
+        .select({
+          id: applications.id,
+          recruitmentCycle: applications.recruitmentCycle,
+          withdrawn: applications.withdrawn,
         })
-        .onConflictDoUpdate({
-          target: [applications.candidateId, applications.jobTitleId],
-          set: {
-            withdrawn: false,
-            withdrawnAt: null,
-            currentStatusId: status.id,
-            updatedAt: new Date(),
-          },
-        })
-        .returning({ id: applications.id });
+        .from(applications)
+        .where(
+          and(
+            eq(applications.candidateId, candidateId),
+            eq(applications.jobTitleId, parsed.jobTitleId),
+          ),
+        )
+        .orderBy(desc(applications.recruitmentCycle))
+        .limit(1);
+      const [app] = existing?.withdrawn
+        ? await db
+            .insert(applications)
+            .values({
+              candidateId,
+              jobTitleId: parsed.jobTitleId,
+              recruitmentCycle: existing.recruitmentCycle + 1,
+              currentStatusId: status.id,
+              createdBy: actor.id,
+            })
+            .returning({ id: applications.id })
+        : existing
+          ? await db
+              .update(applications)
+              .set({ currentStatusId: status.id, updatedAt: new Date() })
+              .where(eq(applications.id, existing.id))
+              .returning({ id: applications.id })
+          : await db
+              .insert(applications)
+              .values({
+                candidateId,
+                jobTitleId: parsed.jobTitleId,
+                currentStatusId: status.id,
+                createdBy: actor.id,
+              })
+              .returning({ id: applications.id });
       applicationId = app.id;
 
       await db.insert(applicationStatusHistory).values({

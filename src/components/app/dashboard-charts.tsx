@@ -50,10 +50,7 @@ function DashboardBarChart({
           tickMargin={8}
           width={116}
         />
-        <ChartTooltip
-          cursor={false}
-          content={<ChartTooltipContent hideLabel />}
-        />
+        <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
         <Bar dataKey="value" fill="var(--color-value)" radius={4} barSize={24}>
           <LabelList
             dataKey="value"
@@ -82,11 +79,7 @@ export function DashboardCharts({
         emptyMessage="No candidate data yet."
         isEmpty={sourceData.length === 0}
       >
-        <DashboardBarChart
-          data={sourceData}
-          label="Candidates"
-          color="var(--chart-1)"
-        />
+        <DashboardBarChart data={sourceData} label="Candidates" color="var(--chart-1)" />
       </ChartPanel>
       <ChartPanel
         title="Application pipeline"
@@ -94,12 +87,16 @@ export function DashboardCharts({
         emptyMessage="No application data yet."
         isEmpty={pipelineData.length === 0}
       >
-        <DashboardBarChart
-          data={pipelineData}
-          label="Applications"
-          color="var(--chart-2)"
-        />
+        <DashboardBarChart data={pipelineData} label="Applications" color="var(--chart-2)" />
       </ChartPanel>
     </div>
   );
+}
+
+export function CandidateSourcesChart({ data }: { data: DashboardChartItem[] }) {
+  return <DashboardBarChart data={data} label="Candidates" color="var(--chart-1)" />;
+}
+
+export function ApplicationPipelineChart({ data }: { data: DashboardChartItem[] }) {
+  return <DashboardBarChart data={data} label="Applications" color="var(--chart-2)" />;
 }

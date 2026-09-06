@@ -3,7 +3,14 @@
 import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { jobTitleStatuses, jobTitles, slaPolicies } from "@/db/schema";
+import {
+  jobTitleHeadcountHistory,
+  jobTitleLifecycleHistory,
+  jobTitleSlaHistory,
+  jobTitleStatuses,
+  jobTitles,
+  slaPolicies,
+} from "@/db/schema";
 import { requireAdmin } from "@/lib/authz";
 import { runAction } from "@/lib/action-result";
 import { runAiJobTitleAutofill } from "@/lib/ai/autofill";
@@ -11,6 +18,7 @@ import { recordAudit } from "@/lib/audit";
 import { DEFAULT_STATUSES } from "@/lib/defaults";
 import { colorForDefaultStatus, type StatusColor } from "@/lib/status-colors";
 import { jobTitleInputSchema, statusColorSchema, statusInputSchema } from "@/lib/validation";
+import { jakartaDate } from "@/lib/sla";
 import type { z } from "zod";
 
 type JobTitleInput = z.infer<typeof jobTitleInputSchema>;
@@ -61,6 +69,25 @@ export async function createJobTitleAction(input: JobTitleInput) {
         color: colorForDefaultStatus(DEFAULT_STATUSES[i]),
       });
     }
+    await db.insert(jobTitleHeadcountHistory).values({
+      jobTitleId: title.id,
+      openings: parsed.openings,
+      effectiveFrom: parsed.recruitmentStartDate,
+      changedBy: actor.id,
+    });
+    await db.insert(jobTitleLifecycleHistory).values({
+      jobTitleId: title.id,
+      status: parsed.lifecycleStatus,
+      effectiveFrom: parsed.recruitmentStartDate,
+      changedBy: actor.id,
+    });
+    await db.insert(jobTitleSlaHistory).values({
+      jobTitleId: title.id,
+      recruitmentStartDate: parsed.recruitmentStartDate,
+      slaWorkingDays: await getSlaDays(parsed.grade, parsed.slaWorkingDays),
+      effectiveFrom: parsed.recruitmentStartDate,
+      changedBy: actor.id,
+    });
     await recordAudit({
       actorId: actor.id,
       action: "job_title.create",
@@ -76,6 +103,15 @@ export async function updateJobTitleAction(id: string, input: JobTitleInput) {
   return runAction(async () => {
     const actor = await requireAdmin();
     const parsed = jobTitleInputSchema.parse(input);
+    const [before] = await db
+      .select({
+        openings: jobTitles.openings,
+        lifecycleStatus: jobTitles.lifecycleStatus,
+        recruitmentStartDate: jobTitles.recruitmentStartDate,
+        slaWorkingDays: jobTitles.slaWorkingDays,
+      })
+      .from(jobTitles)
+      .where(eq(jobTitles.id, id));
     const [updated] = await db
       .update(jobTitles)
       .set({
@@ -98,6 +134,35 @@ export async function updateJobTitleAction(id: string, input: JobTitleInput) {
       })
       .where(eq(jobTitles.id, id))
       .returning({ id: jobTitles.id });
+    if (before && before.openings !== parsed.openings) {
+      await db.insert(jobTitleHeadcountHistory).values({
+        jobTitleId: id,
+        openings: parsed.openings,
+        effectiveFrom: jakartaDate(),
+        changedBy: actor.id,
+      });
+    }
+    if (before && before.lifecycleStatus !== parsed.lifecycleStatus) {
+      await db.insert(jobTitleLifecycleHistory).values({
+        jobTitleId: id,
+        status: parsed.lifecycleStatus,
+        effectiveFrom: jakartaDate(),
+        changedBy: actor.id,
+      });
+    }
+    if (
+      before &&
+      (before.recruitmentStartDate !== parsed.recruitmentStartDate ||
+        before.slaWorkingDays !== parsed.slaWorkingDays)
+    ) {
+      await db.insert(jobTitleSlaHistory).values({
+        jobTitleId: id,
+        recruitmentStartDate: parsed.recruitmentStartDate,
+        slaWorkingDays: parsed.slaWorkingDays,
+        effectiveFrom: jakartaDate(),
+        changedBy: actor.id,
+      });
+    }
     await recordAudit({
       actorId: actor.id,
       action: "job_title.update",
@@ -166,7 +231,10 @@ export async function addStatusAction(jobTitleId: string, name: string, color?: 
 export async function updateStatusAction(statusId: string, name: string) {
   return runAction(async () => {
     const actor = await requireAdmin();
-    const [existing] = await db.select().from(jobTitleStatuses).where(eq(jobTitleStatuses.id, statusId));
+    const [existing] = await db
+      .select()
+      .from(jobTitleStatuses)
+      .where(eq(jobTitleStatuses.id, statusId));
     if (existing?.name === "Hired") throw new Error("HIRED_STATUS_LOCKED");
     const parsed = statusInputSchema.parse({ name });
     await db
@@ -228,7 +296,10 @@ export async function reorderStatusesAction(jobTitleId: string, orderedIds: stri
 export async function deactivateStatusAction(statusId: string) {
   return runAction(async () => {
     const actor = await requireAdmin();
-    const [existing] = await db.select().from(jobTitleStatuses).where(eq(jobTitleStatuses.id, statusId));
+    const [existing] = await db
+      .select()
+      .from(jobTitleStatuses)
+      .where(eq(jobTitleStatuses.id, statusId));
     if (existing?.name === "Hired") throw new Error("HIRED_STATUS_LOCKED");
     await db
       .update(jobTitleStatuses)
